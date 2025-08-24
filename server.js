@@ -2,8 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const pool = require('./db'); // Import the pool from db.js
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
-console.log('Geladene DB-URL:', process.env.DATABASE_URL); // Füge diese Zeile hinzu
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,16 +61,23 @@ app.post('/api/login', async (req, res) => {
         if (!passwordMatch) {
             return res.status(400).json({ message: ' Invalid email adress or password.' });
         }
-
-        // Succesfull login
+        // Create JWT 
+        const token = jwt.sign(
+            { userId: user.user_id, userRole: user.user_role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' } // Token expires in 1 hour
+        );
+        // Succesfull login 
         res.status(200).json({
-            message: 'Login succesfull',
+            message: 'Login succesfull!',
+            token: token, // generated JWT token
             user: {
                 id: user.user_id,
                 email: user.email,
                 role: user.user_role
             }
         });
+        
       } catch (error) {
         console.error('Login Error:', error);
         res.status(500).json({ message: 'An error occured. Please try again later.' });
