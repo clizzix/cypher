@@ -3,3 +3,7 @@ node_modules/
 
 # Umgebungsvariablen und sensible Daten
 .env
+
+# temporary uploads
+uploads/
+
