@@ -1,0 +1,5 @@
+# Node.js-Abhängigkeiten
+node_modules/
+
+# Umgebungsvariablen und sensible Daten
+.env
