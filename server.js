@@ -13,6 +13,22 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json()); // Allow to Parse JSON request bodies
 app.use(cors());
 
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Format: Bearer TOKEN
+
+    if (token == null) {
+        return res.status(401).json({ message: 'Token not found.' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: 'Token is invalid or expired.' });
+        }
+        req.user = user; // save user information in request
+        next();
+    });
+};
 // POST-endpoint for user registration
 app.post('/api/register', async (req, res) => {
     const { email, password } = req.body;
@@ -77,11 +93,19 @@ app.post('/api/login', async (req, res) => {
                 role: user.user_role
             }
         });
-        
+
       } catch (error) {
         console.error('Login Error:', error);
         res.status(500).json({ message: 'An error occured. Please try again later.' });
       }
+});
+
+// A protected Route 
+app.get('/api/protected', authenticateToken, (req, res) => {
+    res.json({
+        message: 'You have access to the protected data!',
+        user: req.user
+    });
 });
 
 // Start Server
