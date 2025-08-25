@@ -14,8 +14,8 @@ app.use(express.json()); // Allow to Parse JSON request bodies
 app.use(cors());
 
 // import and usage of the new creator router
-const creatorRouter = require('./routes/creator');
-app.use('/api/creator', creatorRouter);
+const apiRouter = require('./routes/api');
+app.use('/api', apiRouter);
 
 // POST-endpoint for user registration
 app.post('/api/register', async (req, res) => {
