@@ -231,76 +231,82 @@ router.get('/tracks/download/:trackId', authenticateToken, async (req, res) => {
     }
 });
 // Create Playlist
+// === PLAYLIST-ROUTEN ===
+
+// Eine Playlist erstellen
 router.post('/playlists', authenticateToken, async (req, res) => {
     try {
-      const { title, description } = req.body;
-      if (!title) {
-          return res.status(400).json({ message: 'Playlist title is needed.' });
-      }
+        const { title, description } = req.body;
+        if (!title) {
+            return res.status(400).json({ message: 'Der Titel der Playlist ist erforderlich.' });
+        }
 
-      const newPlaylist = await pool.query(
-          'INSERT INTO playlists (title, description, creator_id) VALUES ($1, $2, $3) RETURNING *',
-          [title, description, req.user.userId]
-      );
+        const newPlaylist = await pool.query(
+            'INSERT INTO playlists (title, description, creator_id) VALUES ($1, $2, $3) RETURNING *',
+            [title, description, req.user.userId]
+        );
 
-      res.status(201).json({
-        message: 'Playlist created succesfully!',
-        playlist: newPlaylist.rows[0]
-      });
+        res.status(201).json({
+            message: 'Playlist erfolgreich erstellt!',
+            playlist: newPlaylist.rows[0]
+        });
+
     } catch (error) {
-        console.error('Error creating the playlist:', error);
-        res.status(500).json({ message: 'An error occured. Please try again later.' });
+        console.error('Fehler beim Erstellen der Playlist:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
     }
 });
 
-// Add Tracks to Playlist
+// Tracks zu einer Playlist hinzufügen
 router.post('/playlists/:playlistId/tracks', authenticateToken, async (req, res) => {
     try {
-      const { playlistId } = req.params;
-      const { trackId } = req.body;
+        const { playlistId } = req.params;
+        const { trackId } = req.body;
 
-      if (!trackId) {
-          return res.status(400).json({ message: 'Track ID is needed to proceed' });
-      }
+        if (!trackId) {
+            return res.status(400).json({ message: 'Die Track-ID ist erforderlich.' });
+        }
 
-      // Check if user is creator of the playlist
-      const playlistResult = await pool.query('SELECT creator_id FROM playlists WHERE playlist_id = $1', [playlistId]);
-      const playlist = playlistResult.rows[0];
+        // Überprüfen, ob der Benutzer der Ersteller der Playlist ist
+        const playlistResult = await pool.query('SELECT creator_id FROM playlists WHERE playlist_id = $1', [playlistId]);
+        const playlist = playlistResult.rows[0];
 
-      if (!playlist || playlist.creator_id !== req.user.userId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
+        if (!playlist || playlist.creator_id !== req.user.userId) {
+            return res.status(403).json({ message: 'Zugriff verweigert.' });
+        }
+        
+        // Track zur Playlist hinzufügen
+        await pool.query(
+            'INSERT INTO playlist_tracks (playlist_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [playlistId, trackId]
+        );
 
-      // Adding a track to the playlist
-      await pool.query(
-          'INSERT INTO playlist_tracks (playlist_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [playlistId, trackId]
-      );
+        res.status(200).json({ message: 'Track erfolgreich zur Playlist hinzugefügt.' });
 
-      res.status(200).json({ message: 'Track added succesfully to the playlist.' });
     } catch (error) {
-      console.error('Error adding the track', error);
-      if (error.code === '23503') {
-          return res.status(404).json({ message: 'Playlist or Track not found.' });
-      }
-      res.status(500).json({ message: 'An error occured. Please try again later.'})
+        console.error('Fehler beim Hinzufügen des Tracks:', error);
+        if (error.code === '23503') { // Postgres-Fehlercode für Fremdschlüsselverletzung
+            return res.status(404).json({ message: 'Playlist oder Track nicht gefunden.' });
+        }
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
     }
 });
 
-// get all Playlists of a user
+// Alle Playlists eines Benutzers abrufen
 router.get('/playlists', authenticateToken, async (req, res) => {
     try {
         const playlistsResult = await pool.query(
-            'SELECT * FROM playlists WHERE creator_id = $1 ORDER BY created at DESC',
+            'SELECT * FROM playlists WHERE creator_id = $1 ORDER BY created_at DESC',
             [req.user.userId]
         );
         res.status(200).json(playlistsResult.rows);
     } catch (error) {
-        console.error('Error while loading the playlist:', error);
-        res.status(500).json({ message: 'Playlist could not be loaded.'})
+        console.error('Fehler beim Abrufen der Playlists:', error);
+        res.status(500).json({ message: 'Playlists konnten nicht abgerufen werden.' });
     }
 });
-// load a single playlist with all tracks 
+
+// Eine einzelne Playlist mit allen Tracks abrufen
 router.get('/playlists/:playlistId', authenticateToken, async (req, res) => {
     try {
         const { playlistId } = req.params;
