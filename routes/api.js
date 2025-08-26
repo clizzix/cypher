@@ -230,6 +230,107 @@ router.get('/tracks/download/:trackId', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Download-Link konnte nicht generiert werden.' });
     }
 });
+// Create Playlist
+router.post('/playlists', authenticateToken, async (req, res) => {
+    try {
+      const { title, description } = req.body;
+      if (!title) {
+          return res.status(400).json({ message: 'Playlist title is needed.' });
+      }
 
+      const newPlaylist = await pool.query(
+          'INSERT INTO playlists (title, description, creator_id) VALUES ($1, $2, $3) RETURNING *',
+          [title, description, req.user.userId]
+      );
+
+      res.status(201).json({
+        message: 'Playlist created succesfully!',
+        playlist: newPlaylist.rows[0]
+      });
+    } catch (error) {
+        console.error('Error creating the playlist:', error);
+        res.status(500).json({ message: 'An error occured. Please try again later.' });
+    }
+});
+
+// Add Tracks to Playlist
+router.post('/playlists/:playlistId/tracks', authenticateToken, async (req, res) => {
+    try {
+      const { playlistId } = req.params;
+      const { trackId } = req.body;
+
+      if (!trackId) {
+          return res.status(400).json({ message: 'Track ID is needed to proceed' });
+      }
+
+      // Check if user is creator of the playlist
+      const playlistResult = await pool.query('SELECT creator_id FROM playlists WHERE playlist_id = $1', [playlistId]);
+      const playlist = playlistResult.rows[0];
+
+      if (!playlist || playlist.creator_id !== req.user.userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Adding a track to the playlist
+      await pool.query(
+          'INSERT INTO playlist_tracks (playlist_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [playlistId, trackId]
+      );
+
+      res.status(200).json({ message: 'Track added succesfully to the playlist.' });
+    } catch (error) {
+      console.error('Error adding the track', error);
+      if (error.code === '23503') {
+          return res.status(404).json({ message: 'Playlist or Track not found.' });
+      }
+      res.status(500).json({ message: 'An error occured. Please try again later.'})
+    }
+});
+
+// get all Playlists of a user
+router.get('/playlists', authenticateToken, async (req, res) => {
+    try {
+        const playlistsResult = await pool.query(
+            'SELECT * FROM playlists WHERE creator_id = $1 ORDER BY created at DESC',
+            [req.user.userId]
+        );
+        res.status(200).json(playlistsResult.rows);
+    } catch (error) {
+        console.error('Error while loading the playlist:', error);
+        res.status(500).json({ message: 'Playlist could not be loaded.'})
+    }
+});
+// load a single playlist with all tracks 
+router.get('/playlists/:playlistId', authenticateToken, async (req, res) => {
+    try {
+        const { playlistId } = req.params;
+
+        const playlistResult = await pool.query('SELECT * FROM playlists WHERE playlist_id = $1 AND creator_id = $2', [playlistId, req.user.userId]);
+        const playlist = playlistResult.rows[0];
+
+        if (!playlist) {
+            return res.status(404).json({ message: 'Playlist nicht gefunden oder Zugriff verweigert.' });
+        }
+
+        // Tracks für die Playlist abrufen
+        const tracksResult = await pool.query(`
+            SELECT t.*, u.artist_name
+            FROM playlist_tracks pt
+            JOIN tracks t ON pt.track_id = t.track_id
+            JOIN users u ON t.artist_id = u.user_id
+            WHERE pt.playlist_id = $1
+            ORDER BY pt.added_at ASC
+        `, [playlistId]);
+
+        res.status(200).json({
+            ...playlist,
+            tracks: tracksResult.rows
+        });
+
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Playlist-Details:', error);
+        res.status(500).json({ message: 'Playlist-Details konnten nicht abgerufen werden.' });
+    }
+});
 
 module.exports = router;
