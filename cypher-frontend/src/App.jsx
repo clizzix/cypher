@@ -1,83 +1,125 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import UploadPage from './UploadPage';
 
 const API_URL = 'http://localhost:3000/api';
 
 function App() {
-    const [isLogin, setIsLogin ] = useState(true);
-    const [email, setEmail ] = useState('');
-    const [password, setPassword] = useState('');
-    const [artistName, setArtistName] = useState('');
-    const [userRole, setUserRole] = useState('listener');
-    const [message, setMessage] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [artistName, setArtistName] = useState('');
+  const [userRole, setUserRole] = useState('listener');
+  const [message, setMessage] = useState('');
+  const [user, setUser] = useState(null);
 
-    const handleAuth = async (event) => {
-        event.preventDefault();
-        setMessage('');
+  // Lade den Benutzerstatus aus localStorage beim Start
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (storedToken && storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
-        const endpoint = isLogin ? 'login' : 'register';
-        const authData = isLogin
-            ? { email, password }
-            : { email, password, userRole, artistName: userRole == 'creator' ? artistName: undefined };
-        
-        try {
-            const response = await axios.post(`${API_URL}/${endpoint}`, authData);
-            setMessage(response.data.message);
-            console.log('Antwort vom Server:', response.data);
-            if (response.data.token) {
-                localStorage.setItem('token', response.data.token);
-            }
-        } catch (error) {
-            setMessage(error.response?.data?.message || 'Ein Fehler ist aufgetreten.');
-        }
-    };
+  const handleAuth = async (event) => {
+    event.preventDefault();
+    setMessage('');
+    
+    const endpoint = isLogin ? 'login' : 'register';
+    const authData = isLogin
+      ? { email, password }
+      : { email, password, userRole, artistName: userRole === 'creator' ? artistName : undefined };
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial' }}>
-            <h1>{isLogin ? 'Anmelden' : 'Registrieren'}</h1>
-            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
-                <input 
-                    type="email"
-                    placeholder="E-Mail"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                />
-                <input
-                    type="password"
-                    placeholder="Passwort"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
-                {!isLogin && (
-                    <>
-                        <label>
-                            Rolle:
-                            <select value={userRole} onChange={(e) => setUserRole(e.target.value)}>
-                                <option value="listener">Listener</option>
-                                <option value="creator">Creator</option>
-                            </select>
-                        </label>
-                        {userRole == 'creator' && (
-                            <input 
-                                type="text"
-                                placeholder="Künstlername"
-                                value={artistName}
-                                onChange={(e) => setArtistName(e.target.value)}
-                                required
-                            />
-                        )}
-                        </>
-                    )}
-                    <button type="submit">{isLogin ? 'Anmelden' : 'Registrieren'}</button>
-            </form>
-            <button onClick={() => setIsLogin(!isLogin)} style={{ marginTop: '10px' }}>
-                {isLogin ? 'Zum Registrieren wechseln' : 'Zum Anmelden wechseln'}
-            </button>
-            {message && <p style={{ marginTop: '20px', color: 'red' }}>{message}</p>}
+    try {
+      const response = await axios.post(`${API_URL}/${endpoint}`, authData);
+      setMessage(response.data.message);
+      
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        setUser(response.data.user); // Setze den Benutzer im Zustand
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Ein Fehler ist aufgetreten.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
+
+  if (user) {
+    if (user.role === 'creator') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'Arial' }}>
+          <button onClick={handleLogout} style={{ position: 'absolute', top: '20px', right: '20px' }}>
+            Abmelden
+          </button>
+          <UploadPage token={localStorage.getItem('token')} />
         </div>
-    );
+      );
+    } else { // Benutzer ist ein 'listener'
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial' }}>
+          <button onClick={handleLogout} style={{ position: 'absolute', top: '20px', right: '20px' }}>
+            Abmelden
+          </button>
+          <h1>Willkommen, {user.email}!</h1>
+          <p>Du bist als Listener angemeldet.</p>
+        </div>
+      );
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial' }}>
+      <h1>{isLogin ? 'Anmelden' : 'Registrieren'}</h1>
+      <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
+        <input
+          type="email"
+          placeholder="E-Mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Passwort"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {!isLogin && (
+          <>
+            <label>
+              Rolle:
+              <select value={userRole} onChange={(e) => setUserRole(e.target.value)}>
+                <option value="listener">Listener</option>
+                <option value="creator">Creator</option>
+              </select>
+            </label>
+            {userRole === 'creator' && (
+              <input
+                type="text"
+                placeholder="Künstlername"
+                value={artistName}
+                onChange={(e) => setArtistName(e.target.value)}
+                required
+              />
+            )}
+          </>
+        )}
+        <button type="submit">{isLogin ? 'Anmelden' : 'Registrieren'}</button>
+      </form>
+      <button onClick={() => setIsLogin(!isLogin)} style={{ marginTop: '10px' }}>
+        {isLogin ? 'Zum Registrieren wechseln' : 'Zum Anmelden wechseln'}
+      </button>
+      {message && <p style={{ marginTop: '20px', color: 'red' }}>{message}</p>}
+    </div>
+  );
 }
 
 export default App;
