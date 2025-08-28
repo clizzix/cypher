@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../db');
@@ -336,6 +336,44 @@ router.get('/playlists/:playlistId', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Fehler beim Abrufen der Playlist-Details:', error);
         res.status(500).json({ message: 'Playlist-Details konnten nicht abgerufen werden.' });
+    }
+});
+
+// === TRACK LÖSCHEN (NUR FÜR CREATORS) ===
+router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res) => {
+    try {
+        const { trackId } = req.params;
+        const artistId = req.user.userId;
+
+        // Abrufen der Track-Details, um zu überprüfen, ob der Benutzer der Künstler ist
+        const trackResult = await pool.query('SELECT file_key, artist_id FROM tracks WHERE track_id = $1', [trackId]);
+        const track = trackResult.rows[0];
+
+        if (!track) {
+            return res.status(404).json({ message: 'Track nicht gefunden.' });
+        }
+
+        if (track.artist_id !== artistId) {
+            return res.status(403).json({ message: 'Zugriff verweigert. Du bist nicht der Ersteller dieses Tracks.' });
+        }
+
+        // 1. Datei aus S3 löschen
+        const deleteParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: track.file_key,
+        };
+
+        const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
+        await s3Client.send(new DeleteObjectCommand(deleteParams));
+
+        // 2. Metadaten aus der Datenbank löschen
+        await pool.query('DELETE FROM tracks WHERE track_id = $1', [trackId]);
+
+        res.status(200).json({ message: 'Track erfolgreich gelöscht.' });
+
+    } catch (error) {
+        console.error('Fehler beim Löschen des Tracks:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
     }
 });
 
