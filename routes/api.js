@@ -382,6 +382,32 @@ router.post('/playlists/:playlistId/tracks', authenticateToken, async (req, res)
         res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
     }
 });
+// Track aus einer Playlist entfernen
+router.delete('/playlists/:playlistId/tracks/:trackId', authenticateToken, async (req, res) => {
+    try {
+        const { playlistId, trackId } = req.params;
+
+        // Überprüfen, ob der Benutzer der Ersteller der Playlist ist
+        const playlistResult = await pool.query('SELECT creator_id FROM playlists WHERE playlist_id = $1', [playlistId]);
+        const playlist = playlistResult.rows[0];
+
+        if (!playlist || playlist.creator_id !== req.user.userId) {
+            return res.status(403).json({ message: 'Zugriff verweigert.' });
+        }
+
+        // Track aus der Playlist entfernen
+        await pool.query(
+            'DELETE FROM playlist_tracks WHERE playlist_id = $1 AND track_id = $2',
+            [playlistId, trackId]
+        );
+
+        res.status(200).json({ message: 'Track erfolgreich aus der Playlist entfernt.' });
+
+    } catch (error) {
+        console.error('Fehler beim Entfernen des Tracks:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
+    }
+});
 
 // Playlist löschen
 router.delete('/playlists/:playlistId', authenticateToken, async (req, res) => {
