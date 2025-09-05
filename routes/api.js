@@ -230,6 +230,23 @@ router.get('/tracks/download/:trackId', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Download-Link konnte nicht generiert werden.' });
     }
 });
+
+// Get all tracks from a specific user
+router.get('/tracks/user', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.user;
+        const result = await pool.query(
+            `SELECT t.*, u.artist_name FROM tracks t 
+            JOIN users u ON t.artist_id = u.user_id 
+            WHERE t.artist_id = $1`,
+            [userId]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "An error occurred while retrieving user's tracks." });
+    }
+});
 // Create Playlist
 // === PLAYLIST-ROUTEN ===
 

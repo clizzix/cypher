@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import UploadPage from './UploadPage';
 import TracksPage from './TracksPage';
+import ProfilePage from './ProfilePage';
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -13,7 +14,7 @@ function App() {
   const [userRole, setUserRole] = useState('listener');
   const [message, setMessage] = useState('');
   const [user, setUser] = useState(null);
-  const [currentPage, setCurrentPage] = useState('tracks'); // Standardseite auf 'tracks' gesetzt
+  const [currentPage, setCurrentPage] = useState('tracks');
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -40,7 +41,7 @@ function App() {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         setUser(response.data.user);
-        setCurrentPage('tracks'); // Weiterleitung zur TracksPage nach erfolgreicher Anmeldung
+        setCurrentPage('tracks');
       }
     } catch (error) {
       setMessage(error.response?.data?.message || 'Ein Fehler ist aufgetreten.');
@@ -104,7 +105,6 @@ function App() {
       );
     }
   
-    // Angemeldeter Benutzer
     return (
       <div style={{ padding: '20px', fontFamily: 'Arial' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -112,7 +112,10 @@ function App() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setCurrentPage('tracks')}>Tracks</button>
             {user.role === 'creator' && (
-              <button onClick={() => setCurrentPage('upload')}>Upload</button>
+              <>
+                <button onClick={() => setCurrentPage('upload')}>Upload</button>
+                <button onClick={() => setCurrentPage('profile')}>Profil</button>
+              </>
             )}
           </div>
         </div>
@@ -120,6 +123,9 @@ function App() {
         {currentPage === 'tracks' && <TracksPage token={localStorage.getItem('token')} />}
         {currentPage === 'upload' && user.role === 'creator' && (
           <UploadPage token={localStorage.getItem('token')} />
+        )}
+        {currentPage === 'profile' && user.role === 'creator' && (
+          <ProfilePage token={localStorage.getItem('token')} user={user} />
         )}
       </div>
     );
