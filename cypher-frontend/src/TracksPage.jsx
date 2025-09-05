@@ -7,23 +7,47 @@ const TracksPage = ({ token }) => {
   const [tracks, setTracks] = useState([]);
   const [message, setMessage] = useState('');
   const [currentAudio, setCurrentAudio] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState('');
+  const [genres, setGenres] = useState([]); // Zustand für die Genres
+
+  // Funktion zum Abrufen aller Tracks und Genres
+  const fetchTracks = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/tracks`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        params: {
+          q: searchTerm,
+          genre: selectedGenre
+        }
+      });
+      setTracks(response.data);
+    } catch (error) {
+      setMessage('Fehler beim Abrufen der Tracks.');
+      console.error('Fehler beim Abrufen der Tracks:', error);
+    }
+  };
+
+  // Funktion zum Abrufen der Genres
+  const fetchGenres = async () => {
+    try {
+      // Annahme: Dein Backend hat eine /genres Route
+      // Wenn nicht, kannst du eine Liste manuell definieren
+      // oder die Genres aus den Tracks extrahieren.
+      // Fürs Erste definieren wir sie manuell.
+      const availableGenres = ['Rock', 'Pop', 'Jazz', 'Hip Hop', 'Electronic', 'Techno'];
+      setGenres(availableGenres);
+    } catch (error) {
+      console.error('Fehler beim Abrufen der Genres:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchTracks = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/tracks`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        setTracks(response.data);
-      } catch (error) {
-        setMessage('Fehler beim Abrufen der Tracks.');
-        console.error('Fehler beim Abrufen der Tracks:', error);
-      }
-    };
     fetchTracks();
-  }, [token]);
+    fetchGenres();
+  }, [token, searchTerm, selectedGenre]);
 
   const handleDownload = async (trackId) => {
     try {
@@ -55,6 +79,25 @@ const TracksPage = ({ token }) => {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial' }}>
       <h1>Entdecke Musik</h1>
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+        <input
+          type="text"
+          placeholder="Suche nach Titel oder Künstler"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ padding: '8px', width: '300px' }}
+        />
+        <select
+          value={selectedGenre}
+          onChange={(e) => setSelectedGenre(e.target.value)}
+          style={{ padding: '8px' }}
+        >
+          <option value="">Alle Genres</option>
+          {genres.map(genre => (
+            <option key={genre} value={genre}>{genre}</option>
+          ))}
+        </select>
+      </div>
       {message && <p style={{ color: 'red' }}>{message}</p>}
       <ul style={{ listStyleType: 'none', padding: 0 }}>
         {tracks.length > 0 ? (
@@ -69,7 +112,7 @@ const TracksPage = ({ token }) => {
             </li>
           ))
         ) : (
-          <p>Keine Tracks gefunden.</p>
+          <p>Keine Tracks gefunden, die den Kriterien entsprechen.</p>
         )}
       </ul>
     </div>
