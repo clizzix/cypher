@@ -3,6 +3,7 @@ import axios from 'axios';
 import UploadPage from './UploadPage';
 import TracksPage from './TracksPage';
 import ProfilePage from './ProfilePage';
+import PlaylistsPage from './PlaylistsPage'; // Importiere die neue Komponente
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -111,6 +112,7 @@ function App() {
           <button onClick={handleLogout}>Abmelden</button>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setCurrentPage('tracks')}>Tracks</button>
+            <button onClick={() => setCurrentPage('playlists')}>Playlists</button>
             {user.role === 'creator' && (
               <>
                 <button onClick={() => setCurrentPage('upload')}>Upload</button>
@@ -121,6 +123,7 @@ function App() {
         </div>
   
         {currentPage === 'tracks' && <TracksPage token={localStorage.getItem('token')} />}
+        {currentPage === 'playlists' && <PlaylistsPage token={localStorage.getItem('token')} user={user} />}
         {currentPage === 'upload' && user.role === 'creator' && (
           <UploadPage token={localStorage.getItem('token')} />
         )}

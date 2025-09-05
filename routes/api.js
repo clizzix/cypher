@@ -11,43 +11,42 @@ const router = express.Router();
 
 // Middleware zur Überprüfung des JWT-Tokens
 const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-  if (token == null) {
-    return res.status(401).json({ message: 'Token nicht gefunden.' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Token ist ungültig oder abgelaufen.' });
+    if (token == null) {
+        return res.status(401).json({ message: 'Token nicht gefunden.' });
     }
-    req.user = user;
-    next();
-  });
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: 'Token ist ungültig oder abgelaufen.' });
+        }
+        req.user = user;
+        next();
+    });
 };
 
 // Middleware, die nur Creators zulässt
 const isCreator = (req, res, next) => {
-  if (req.user.userRole !== 'creator') {
-    return res.status(403).json({ message: 'Zugriff verweigert. Nur Creators dürfen hochladen.' });
-  }
-  next();
+    if (req.user.userRole !== 'creator') {
+        return res.status(403).json({ message: 'Zugriff verweigert. Nur Creators dürfen hochladen.' });
+    }
+    next();
 };
 
 // S3-Client konfigurieren
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
+    region: process.env.AWS_REGION,
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
 });
 
 // Multer-Konfiguration für den Arbeitsspeicher
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-
 
 // === AUTHENTIFIZIERUNGS-ROUTEN ===
 router.post('/register', async (req, res) => {
@@ -75,7 +74,7 @@ router.post('/register', async (req, res) => {
 
     } catch (error) {
         console.error('Fehler bei der Registrierung:', error.message);
-        if (error.code === '23505') { // Postgres-Fehlercode für UNIQUE-Constraint-Verletzung
+        if (error.code === '23505') {
             return res.status(400).json({ message: 'E-Mail oder Künstlername existiert bereits.' });
         }
         res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
@@ -83,87 +82,85 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+    const { email, password } = req.body;
 
-  try {
-    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    const user = userResult.rows[0];
+    try {
+        const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        const user = userResult.rows[0];
 
-    if (!user) {
-      return res.status(400).json({ message: 'Ungültige E-Mail-Adresse oder Passwort.' });
+        if (!user) {
+            return res.status(400).json({ message: 'Ungültige E-Mail-Adresse oder Passwort.' });
+        }
+
+        const passwordMatch = await bcrypt.compare(password, user.password_hash);
+
+        if (!passwordMatch) {
+            return res.status(400).json({ message: 'Ungültige E-Mail-Adresse oder Passwort.' });
+        }
+
+        const token = jwt.sign(
+            { userId: user.user_id, userRole: user.user_role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.status(200).json({
+            message: 'Anmeldung erfolgreich!',
+            token: token,
+            user: {
+                id: user.user_id,
+                email: user.email,
+                role: user.user_role,
+                artistName: user.artist_name
+            }
+        });
+
+    } catch (error) {
+        console.error('Fehler bei der Anmeldung:', error.message);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
     }
-
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!passwordMatch) {
-      return res.status(400).json({ message: 'Ungültige E-Mail-Adresse oder Passwort.' });
-    }
-
-    const token = jwt.sign(
-      { userId: user.user_id, userRole: user.user_role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-
-    res.status(200).json({
-      message: 'Anmeldung erfolgreich!',
-      token: token,
-      user: {
-        id: user.user_id,
-        email: user.email,
-        role: user.user_role,
-        artistName: user.artist_name
-      }
-    });
-
-  } catch (error) {
-    console.error('Fehler bei der Anmeldung:', error.message);
-    res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
-  }
 });
 
-
-// === TRACKS HOCHLADEN (NUR FÜR CREATORS) ===
+// === TRACK-ROUTEN ===
 router.post('/upload', authenticateToken, isCreator, upload.single('audioFile'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'Keine Datei zum Hochladen gefunden.' });
-    }
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Keine Datei zum Hochladen gefunden.' });
+        }
 
-    const { originalname, mimetype, buffer } = req.file;
-    const { title, genre, description } = req.body;
-    const artistId = req.user.userId;
+        const { originalname, mimetype, buffer } = req.file;
+        const { title, genre, description } = req.body;
+        const artistId = req.user.userId;
 
-    const key = `${uuidv4()}-${originalname}`;
+        const key = `${uuidv4()}-${originalname}`;
 
-    const uploadParams = {
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: key,
-      Body: buffer,
-      ContentType: mimetype,
-    };
+        const uploadParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: key,
+            Body: buffer,
+            ContentType: mimetype,
+        };
 
-    await s3Client.send(new PutObjectCommand(uploadParams));
+        await s3Client.send(new PutObjectCommand(uploadParams));
 
-    await pool.query(
-      `INSERT INTO tracks (title, artist_id, file_key, genre, description)
+        await pool.query(
+            `INSERT INTO tracks (title, artist_id, file_key, genre, description)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [title, artistId, key, genre, description]
-    );
+            [title, artistId, key, genre, description]
+        );
 
-    res.status(200).json({
-      message: 'Datei erfolgreich hochgeladen und Metadaten gespeichert!',
-      fileKey: key,
-    });
+        res.status(200).json({
+            message: 'Datei erfolgreich hochgeladen und Metadaten gespeichert!',
+            fileKey: key,
+        });
 
-  } catch (error) {
-    console.error('Fehler beim Upload:', error);
-    res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
-  }
+    } catch (error) {
+        console.error('Fehler beim Upload:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
+    }
 });
 
-
-// === TRACKS ABRUFEN (FÜR ALLE AUTHENTIFIZIERTEN BENUTZER) ===
+// Tracks abrufen (mit Such- und Filterfunktion)
 router.get('/tracks', authenticateToken, async (req, res) => {
     try {
         const { q, genre } = req.query;
@@ -204,7 +201,24 @@ router.get('/tracks', authenticateToken, async (req, res) => {
     }
 });
 
-// Eine Route, um einen Track herunterzuladen (gesicherte URL)
+// Tracks eines bestimmten Benutzers abrufen
+router.get('/tracks/user', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.user;
+        const result = await pool.query(
+            `SELECT t.*, u.artist_name FROM tracks t 
+            JOIN users u ON t.artist_id = u.user_id 
+            WHERE t.artist_id = $1`,
+            [userId]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Tracks des Benutzers:', error);
+        res.status(500).json({ message: "Fehler beim Abrufen der Tracks des Benutzers." });
+    }
+});
+
+// Einen Track herunterladen (gesicherte URL)
 router.get('/tracks/download/:trackId', authenticateToken, async (req, res) => {
     try {
         const { trackId } = req.params;
@@ -231,85 +245,41 @@ router.get('/tracks/download/:trackId', authenticateToken, async (req, res) => {
     }
 });
 
-// Get all tracks from a specific user
-router.get('/tracks/user', authenticateToken, async (req, res) => {
+// Track löschen
+router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res) => {
     try {
-        const { userId } = req.user;
-        const result = await pool.query(
-            `SELECT t.*, u.artist_name FROM tracks t 
-            JOIN users u ON t.artist_id = u.user_id 
-            WHERE t.artist_id = $1`,
-            [userId]
-        );
-        res.json(result.rows);
+        const { trackId } = req.params;
+        const artistId = req.user.userId;
+
+        const trackResult = await pool.query('SELECT file_key, artist_id FROM tracks WHERE track_id = $1', [trackId]);
+        const track = trackResult.rows[0];
+
+        if (!track) {
+            return res.status(404).json({ message: 'Track nicht gefunden.' });
+        }
+
+        if (track.artist_id !== artistId) {
+            return res.status(403).json({ message: 'Zugriff verweigert. Du bist nicht der Ersteller dieses Tracks.' });
+        }
+
+        const deleteParams = {
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: track.file_key,
+        };
+
+        await s3Client.send(new DeleteObjectCommand(deleteParams));
+        await pool.query('DELETE FROM tracks WHERE track_id = $1', [trackId]);
+
+        res.status(200).json({ message: 'Track erfolgreich gelöscht.' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "An error occurred while retrieving user's tracks." });
+        console.error('Fehler beim Löschen des Tracks:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
     }
 });
-// Create Playlist
+
 // === PLAYLIST-ROUTEN ===
 
-// Eine Playlist erstellen
-router.post('/playlists', authenticateToken, async (req, res) => {
-    try {
-        const { title, description } = req.body;
-        if (!title) {
-            return res.status(400).json({ message: 'Der Titel der Playlist ist erforderlich.' });
-        }
-
-        const newPlaylist = await pool.query(
-            'INSERT INTO playlists (title, description, creator_id) VALUES ($1, $2, $3) RETURNING *',
-            [title, description, req.user.userId]
-        );
-
-        res.status(201).json({
-            message: 'Playlist erfolgreich erstellt!',
-            playlist: newPlaylist.rows[0]
-        });
-
-    } catch (error) {
-        console.error('Fehler beim Erstellen der Playlist:', error);
-        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
-    }
-});
-
-// Tracks zu einer Playlist hinzufügen
-router.post('/playlists/:playlistId/tracks', authenticateToken, async (req, res) => {
-    try {
-        const { playlistId } = req.params;
-        const { trackId } = req.body;
-
-        if (!trackId) {
-            return res.status(400).json({ message: 'Die Track-ID ist erforderlich.' });
-        }
-
-        // Überprüfen, ob der Benutzer der Ersteller der Playlist ist
-        const playlistResult = await pool.query('SELECT creator_id FROM playlists WHERE playlist_id = $1', [playlistId]);
-        const playlist = playlistResult.rows[0];
-
-        if (!playlist || playlist.creator_id !== req.user.userId) {
-            return res.status(403).json({ message: 'Zugriff verweigert.' });
-        }
-        
-        // Track zur Playlist hinzufügen
-        await pool.query(
-            'INSERT INTO playlist_tracks (playlist_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [playlistId, trackId]
-        );
-
-        res.status(200).json({ message: 'Track erfolgreich zur Playlist hinzugefügt.' });
-
-    } catch (error) {
-        console.error('Fehler beim Hinzufügen des Tracks:', error);
-        if (error.code === '23503') { // Postgres-Fehlercode für Fremdschlüsselverletzung
-            return res.status(404).json({ message: 'Playlist oder Track nicht gefunden.' });
-        }
-        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
-    }
-});
-
-// Alle Playlists eines Benutzers abrufen
+// Alle Playlists eines Benutzers abrufen (für die Playlist-Seite)
 router.get('/playlists', authenticateToken, async (req, res) => {
     try {
         const playlistsResult = await pool.query(
@@ -323,6 +293,32 @@ router.get('/playlists', authenticateToken, async (req, res) => {
     }
 });
 
+// Eine Playlist erstellen
+router.post('/playlists', authenticateToken, async (req, res) => {
+    try {
+        // Das Frontend sendet 'name', nicht 'title'
+        const { name, description } = req.body;
+        if (!name) {
+            return res.status(400).json({ message: 'Der Name der Playlist ist erforderlich.' });
+        }
+
+        const newPlaylist = await pool.query(
+            'INSERT INTO playlists (name, description, creator_id) VALUES ($1, $2, $3) RETURNING *',
+            [name, description, req.user.userId]
+        );
+
+        res.status(201).json({
+            message: 'Playlist erfolgreich erstellt!',
+            playlist: newPlaylist.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Fehler beim Erstellen der Playlist:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
+    }
+});
+
+
 // Eine einzelne Playlist mit allen Tracks abrufen
 router.get('/playlists/:playlistId', authenticateToken, async (req, res) => {
     try {
@@ -335,7 +331,6 @@ router.get('/playlists/:playlistId', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'Playlist nicht gefunden oder Zugriff verweigert.' });
         }
 
-        // Tracks für die Playlist abrufen
         const tracksResult = await pool.query(`
             SELECT t.*, u.artist_name
             FROM playlist_tracks pt
@@ -356,40 +351,56 @@ router.get('/playlists/:playlistId', authenticateToken, async (req, res) => {
     }
 });
 
-// === TRACK LÖSCHEN (NUR FÜR CREATORS) ===
-router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res) => {
+// Tracks zu einer Playlist hinzufügen
+router.post('/playlists/:playlistId/tracks', authenticateToken, async (req, res) => {
     try {
-        const { trackId } = req.params;
-        const artistId = req.user.userId;
+        const { playlistId } = req.params;
+        const { trackId } = req.body;
 
-        // Abrufen der Track-Details, um zu überprüfen, ob der Benutzer der Künstler ist
-        const trackResult = await pool.query('SELECT file_key, artist_id FROM tracks WHERE track_id = $1', [trackId]);
-        const track = trackResult.rows[0];
-
-        if (!track) {
-            return res.status(404).json({ message: 'Track nicht gefunden.' });
+        if (!trackId) {
+            return res.status(400).json({ message: 'Die Track-ID ist erforderlich.' });
         }
 
-        if (track.artist_id !== artistId) {
-            return res.status(403).json({ message: 'Zugriff verweigert. Du bist nicht der Ersteller dieses Tracks.' });
+        const playlistResult = await pool.query('SELECT creator_id FROM playlists WHERE playlist_id = $1', [playlistId]);
+        const playlist = playlistResult.rows[0];
+
+        if (!playlist || playlist.creator_id !== req.user.userId) {
+            return res.status(403).json({ message: 'Zugriff verweigert.' });
         }
 
-        // 1. Datei aus S3 löschen
-        const deleteParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: track.file_key,
-        };
+        await pool.query(
+            'INSERT INTO playlist_tracks (playlist_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [playlistId, trackId]
+        );
 
-        const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
-        await s3Client.send(new DeleteObjectCommand(deleteParams));
+        res.status(200).json({ message: 'Track erfolgreich zur Playlist hinzugefügt.' });
+    } catch (error) {
+        console.error('Fehler beim Hinzufügen des Tracks:', error);
+        if (error.code === '23503') {
+            return res.status(404).json({ message: 'Playlist oder Track nicht gefunden.' });
+        }
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
+    }
+});
 
-        // 2. Metadaten aus der Datenbank löschen
-        await pool.query('DELETE FROM tracks WHERE track_id = $1', [trackId]);
+// Playlist löschen
+router.delete('/playlists/:playlistId', authenticateToken, async (req, res) => {
+    try {
+        const { playlistId } = req.params;
 
-        res.status(200).json({ message: 'Track erfolgreich gelöscht.' });
+        const playlistResult = await pool.query('SELECT creator_id FROM playlists WHERE playlist_id = $1', [playlistId]);
+        const playlist = playlistResult.rows[0];
+
+        if (!playlist || playlist.creator_id !== req.user.userId) {
+            return res.status(403).json({ message: 'Zugriff verweigert. Du bist nicht der Ersteller dieser Playlist.' });
+        }
+
+        await pool.query('DELETE FROM playlists WHERE playlist_id = $1', [playlistId]);
+
+        res.status(200).json({ message: 'Playlist erfolgreich gelöscht.' });
 
     } catch (error) {
-        console.error('Fehler beim Löschen des Tracks:', error);
+        console.error('Fehler beim Löschen der Playlist:', error);
         res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
     }
 });
