@@ -62,7 +62,7 @@ const MainApp = () => {
     if (!user) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial' }}>
-                <h1>{isLogin ? 'Anmelden' : 'Registrieren'}</h1>
+                <h1 className="text-red-500">{isLogin ? 'Anmelden' : 'Registrieren'}</h1>
                 <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
                     <input
                         type="email"

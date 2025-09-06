@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './TracksPage.css'; // <-- Importiere die neue CSS-Datei
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -47,21 +48,25 @@ const TracksPage = ({ token }) => {
     };
 
     if (loading) {
-        return <p>Lade Tracks...</p>;
+        return <p className="loading-message">Lade Tracks...</p>;
     }
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-            <h1>Tracks entdecken</h1>
-            <form onSubmit={handleSearch} style={{ marginBottom: '20px' }}>
+        <div className="tracks-container">
+            <h1 className="page-title">Tracks entdecken</h1>
+            <form onSubmit={handleSearch} className="search-form">
                 <input
                     type="text"
                     placeholder="Suche nach Titel oder Künstler..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ marginRight: '10px' }}
+                    className="search-input"
                 />
-                <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)} style={{ marginRight: '10px' }}>
+                <select 
+                    value={selectedGenre} 
+                    onChange={(e) => setSelectedGenre(e.target.value)} 
+                    className="search-select"
+                >
                     <option value="">Alle Genres</option>
                     <option value="Rock">Rock</option>
                     <option value="Pop">Pop</option>
@@ -69,46 +74,38 @@ const TracksPage = ({ token }) => {
                     <option value="Hip Hop">Hip Hop</option>
                     <option value="Electronic">Electronic</option>
                 </select>
-                <button type="submit">Suchen</button>
+                <button type="submit" className="search-button">Suchen</button>
             </form>
 
-            {message && <p style={{ color: 'red' }}>{message}</p>}
+            {message && <p className="message">{message}</p>}
 
             {tracks.length > 0 ? (
-                <ul style={{ listStyleType: 'none', padding: 0 }}>
+                <ul className="tracks-list">
                     {tracks.map(track => (
-                        <li key={track.track_id} style={{
-                            border: '1px solid #ccc',
-                            margin: '10px 0',
-                            padding: '15px',
-                            borderRadius: '5px',
-                            display: 'flex',
-                            gap: '20px',
-                            alignItems: 'center'
-                        }}>
+                        <li key={track.track_id} className="track-item">
                             {track.cover_art_key ? (
                                 <img
                                     src={`${API_URL}/tracks/cover/${track.cover_art_key}?token=${token}`}
                                     alt={`Cover für ${track.title}`}
-                                    style={{ width: '100px', height: '100px', objectFit: 'cover' }}
+                                    className="track-cover"
                                 />
                             ) : (
-                                <div style={{ width: '100px', height: '100px', backgroundColor: '#e0e0e0', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '12px', textAlign: 'center' }}>
-                                    Kein Cover
+                                <div className="track-cover-placeholder">
+                                    <p>Kein Cover</p>
                                 </div>
                             )}
-                            <div>
-                                <h3>{track.title}</h3>
-                                <p><strong>Künstler:</strong> {track.artist_name}</p>
-                                <p><strong>Genre:</strong> {track.genre}</p>
-                                <p><strong>Beschreibung:</strong> {track.description}</p>
-                                <button onClick={() => handleDownload(track.track_id)}>Download</button>
+                            <div className="track-info">
+                                <h3 className="track-title">{track.title}</h3>
+                                <p className="track-artist">von {track.artist_name}</p>
+                                <p className="track-genre">{track.genre}</p>
+                                <p className="track-description">{track.description}</p>
+                                <button onClick={() => handleDownload(track.track_id)} className="download-button">Download</button>
                             </div>
                         </li>
                     ))}
                 </ul>
             ) : (
-                <p>Keine Tracks gefunden.</p>
+                <p className="message">Keine Tracks gefunden.</p>
             )}
         </div>
     );
