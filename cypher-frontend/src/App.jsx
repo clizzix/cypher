@@ -6,6 +6,7 @@ import TracksPage from './TracksPage';
 import ProfilePage from './ProfilePage';
 import PlaylistsPage from './PlaylistsPage';
 import NotificationsPage from './NotificationsPage';
+import EditTrackPage from './EditTrackPage';
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -123,17 +124,18 @@ const MainApp = () => {
                     )}
                 </nav>
             </div>
-            <Routes>
+              <Routes>
                 <Route path="/tracks" element={<TracksPage token={localStorage.getItem('token')} />} />
                 <Route path="/playlists" element={<PlaylistsPage token={localStorage.getItem('token')} user={user} />} />
                 <Route path="/notifications" element={<NotificationsPage token={localStorage.getItem('token')} />} />
                 {user.role === 'creator' && (
-                    <>
-                        <Route path="/upload" element={<UploadPage token={localStorage.getItem('token')} />} />
-                        <Route path="/profile" element={<ProfilePage token={localStorage.getItem('token')} user={user} />} />
-                    </>
+                  <>
+                    <Route path="/upload" element={<UploadPage token={localStorage.getItem('token')} />} />
+                    <Route path="/profile" element={<ProfilePage token={localStorage.getItem('token')} user={user} />} />
+                    <Route path="/edit-track/:trackId" element={<EditTrackPage token={localStorage.getItem('token')} />} /> {/* <-- Diese Zeile hinzufügen */}
+                  </>
                 )}
-            </Routes>
+              </Routes>
         </div>
     );
 };

@@ -160,13 +160,13 @@ router.post('/upload', authenticateToken, isCreator, upload.single('audioFile'),
     }
 });
 
-// Tracks abrufen (mit Such- und Filterfunktion)
+// Tracks abrufen (mit Such- und Filterfunktion) (Aktualisiert)
 router.get('/tracks', authenticateToken, async (req, res) => {
     try {
         const { q, genre } = req.query;
 
         let query = `
-            SELECT t.*, u.artist_name
+            SELECT t.*, u.artist_name, t.cover_art_key  
             FROM tracks t
             JOIN users u ON t.artist_id = u.user_id
         `;
@@ -277,6 +277,91 @@ router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res)
     }
 });
 
+// === TRACK BEARBEITUNGS-ROUTEN ===
+
+// Track-Metadaten und Cover-Art aktualisieren
+router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('coverArt'), async (req, res) => {
+    try {
+        const { trackId } = req.params;
+        const { title, genre, description } = req.body;
+        const artistId = req.user.userId;
+
+        // Überprüfen, ob der Benutzer der Ersteller des Tracks ist
+        const trackResult = await pool.query('SELECT file_key, cover_art_key, artist_id FROM tracks WHERE track_id = $1', [trackId]);
+        const track = trackResult.rows[0];
+
+        if (!track) {
+            return res.status(404).json({ message: 'Track nicht gefunden.' });
+        }
+
+        if (track.artist_id !== artistId) {
+            return res.status(403).json({ message: 'Zugriff verweigert. Du bist nicht der Ersteller dieses Tracks.' });
+        }
+
+        let query = 'UPDATE tracks SET title = $1, genre = $2, description = $3';
+        const params = [title, genre, description];
+        let paramIndex = 4;
+        let newCoverArtKey = track.cover_art_key;
+
+        // Cover-Art-Bild hochladen, falls vorhanden
+        if (req.file) {
+            // Falls bereits ein Cover-Art existiert, dieses im S3-Bucket löschen
+            if (track.cover_art_key) {
+                const deleteParams = {
+                    Bucket: process.env.S3_BUCKET_NAME,
+                    Key: track.cover_art_key,
+                };
+                await s3Client.send(new DeleteObjectCommand(deleteParams));
+            }
+
+            // Neues Cover-Art-Bild hochladen
+            const key = `cover-${uuidv4()}-${req.file.originalname}`;
+            const uploadParams = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: key,
+                Body: req.file.buffer,
+                ContentType: req.file.mimetype,
+            };
+            await s3Client.send(new PutObjectCommand(uploadParams));
+            newCoverArtKey = key;
+
+            query += `, cover_art_key = $${paramIndex}`;
+            params.push(newCoverArtKey);
+            paramIndex++;
+        }
+
+        query += ` WHERE track_id = $${paramIndex} AND artist_id = $${paramIndex + 1}`;
+        params.push(trackId, artistId);
+
+        await pool.query(query, params);
+
+        res.status(200).json({ message: 'Track erfolgreich aktualisiert.', coverArtKey: newCoverArtKey });
+
+    } catch (error) {
+        console.error('Fehler beim Aktualisieren des Tracks:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
+    }
+});
+// Gesicherte URL für das Cover-Art abrufen
+router.get('/tracks/cover/:coverArtKey', authenticateToken, async (req, res) => {
+    try {
+        const { coverArtKey } = req.params;
+
+        const signedUrl = await getSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: coverArtKey,
+            }),
+            { expiresIn: 3600 }
+        );
+
+        res.status(200).json({ coverArtUrl: signedUrl });
+    } catch (error) {
+        console.error('Fehler beim Generieren der Cover-Art-URL:', error);
+        res.status(500).json({ message: 'Cover-Art-URL konnte nicht generiert werden.' });
+    }
+});
 // === PLAYLIST-ROUTEN ===
 
 // Alle Playlists eines Benutzers abrufen (für die Playlist-Seite)
