@@ -468,6 +468,21 @@ router.post('/tracks/:trackId/comments', authenticateToken, async (req, res) => 
             [trackId, userId, commentText]
         );
 
+        // Benachrichtigung für den Creator erstellen
+        const trackResult = await pool.query('SELECT artist_id FROM tracks WHERE track_id = $1', [trackId]);
+        const trackCreatorId = trackResult.rows[0]?.artist_id;
+
+        if (trackCreatorId && trackCreatorId !== userId) {
+            const senderResult = await pool.query('SELECT artist_name FROM users WHERE user_id = $1', [userId]);
+            const senderName = senderResult.rows[0]?.artist_name || 'Ein Benutzer';
+            const message = `${senderName} hat deinen Track kommentiert.`;
+
+            await pool.query(
+                'INSERT INTO notifications (recipient_user_id, sender_user_id, notification_type, message, track_id) VALUES ($1, $2, $3, $4, $5)',
+                [trackCreatorId, userId, 'new_comment', message, trackId]
+            );
+        }
+
         res.status(201).json({
             message: 'Kommentar erfolgreich hinzugefügt.',
             comment: newComment.rows[0]
@@ -503,7 +518,7 @@ router.get('/tracks/:trackId/likes', authenticateToken, async (req, res) => {
     }
 });
 
-// Einen Track liken oder Unlike
+// Einen Track liken oder Unliken
 router.post('/tracks/:trackId/like', authenticateToken, async (req, res) => {
     try {
         const { trackId } = req.params;
@@ -518,11 +533,66 @@ router.post('/tracks/:trackId/like', authenticateToken, async (req, res) => {
         } else {
             // Track liken
             await pool.query('INSERT INTO likes (track_id, user_id) VALUES ($1, $2)', [trackId, userId]);
+
+            // Benachrichtigung
+            const trackResult = await pool.query('SELECT artist_id FROM tracks WHERE track_id = $1', [trackId]);
+            const trackCreatorId = trackResult.rows[0]?.artist;
+
+            if (trackCreatorId && trackCreatorId !== userId) {
+                const senderResult = await pool.query('SELECT artist_name FROM users WHERE user_id = $1', [userId]);
+                const senderName = senderResult.rows[0]?.artist_name || 'Ein Benutzer';
+                const message = `${senderName} hat deinen Track geliked.`;
+
+                await pool.query(
+                    'INSERT INTO notifications (recipient_user_id, sender_user_id, notification_type, message, track_id) VALUES ($1, $2, $3, $4, $5)',
+                    [trackCreatorId, userId, 'track_liked', message, trackId]
+                );
+            }
+
             res.status(201).json({ message: 'Track geliked.' });
         }
     } catch (error) {
         console.error('Fehler beim Liken/Unliken:', error);
         res.status(500).json({ message: 'Ein Fehler ist aufgetreten.' });
+    }
+});
+
+// === BENACHRICHTIGUNGS-ROUTEN ===
+
+// Alle Benachrichtigungen für den angemeldeten Benutzer abrufen
+router.get('/notifications', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const notificationsResult = await pool.query(
+            `SELECT n.*, u.artist_name as sender_name
+             FROM notifications n
+             LEFT JOIN users u ON n.sender_user_id = u.user_id
+             WHERE n.recipient_user_id = $1
+             ORDER BY n.created_at DESC`,
+            [userId]
+        );
+        res.status(200).json(notificationsResult.rows);
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Benachrichtigungen:', error);
+        res.status(500).json({ message: 'Benachrichtigungen konnten nicht abgerufen werden.' });
+    }
+});
+
+// Benachrichtigung als gelesen markieren
+router.put('/notifications/:id/read', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId;
+
+        await pool.query(
+            'UPDATE notifications SET is_read = TRUE WHERE notification_id = $1 AND recipient_user_id = $2',
+            [id, userId]
+        );
+
+        res.status(200).json({ message: 'Benachrichtigung als gelesen markiert.' });
+    } catch (error) {
+        console.error('Fehler beim Markieren als gelesen:', error);
+        res.status(500).json({ message: 'Benachrichtigung konnte nicht aktualisiert werden.' });
     }
 });
 module.exports = router;
