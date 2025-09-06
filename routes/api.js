@@ -431,4 +431,98 @@ router.delete('/playlists/:playlistId', authenticateToken, async (req, res) => {
     }
 });
 
+// === KOMMENTAR-ROUTEN ===
+
+// Kommentare für einen bestimmten Track abrufen
+router.get('/tracks/:trackId/comments', authenticateToken, async (req, res) => {
+    try {
+        const { trackId } = req.params;
+        const commentsResult = await pool.query(
+            `SELECT c.*, u.artist_name, u.email
+             FROM comments c
+             JOIN users u ON c.user_id = u.user_id
+             WHERE c.track_id = $1
+             ORDER BY c.created_at ASC`,
+            [trackId]
+        );
+        res.status(200).json(commentsResult.rows);
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Kommentare:', error);
+        res.status(500).json({ message: 'Kommentare konnten nicht abgerufen werden.' });
+    }
+});
+
+// Einen Kommentar zu einem Track hinzufügen
+router.post('/tracks/:trackId/comments', authenticateToken, async (req, res) => {
+    try {
+        const { trackId } = req.params;
+        const { commentText } = req.body;
+        const userId = req.user.userId;
+
+        if (!commentText) {
+            return res.status(400).json({ message: 'Kommentartext darf nicht leer sein.' });
+        }
+
+        const newComment = await pool.query(
+            'INSERT INTO comments (track_id, user_id, comment_text) VALUES ($1, $2, $3) RETURNING *',
+            [trackId, userId, commentText]
+        );
+
+        res.status(201).json({
+            message: 'Kommentar erfolgreich hinzugefügt.',
+            comment: newComment.rows[0]
+        });
+    } catch (error) {
+        console.error('Fehler beim Hinzufügen des Kommentars:', error);
+        res.status(500).json({ message: 'Kommentar konnte nicht hinzugefügt werden.' });
+    }
+});
+
+// === LIKE-ROUTEN ===
+
+// Likes für einen bestimmten Track abrufen
+router.get('/tracks/:trackId/likes', authenticateToken, async (req, res) => {
+    try {
+        const { trackId } = req.params;
+        const likesResult = await pool.query(
+            'SELECT COUNT(*) FROM likes WHERE track_id = $1',
+            [trackId]
+        );
+        const userLikedResult = await pool.query(
+            'SELECT * FROM likes WHERE track_id = $1 AND user_id = $2',
+            [trackId, req.user.userId]
+        );
+
+        res.status(200).json({
+            likeCount: parseInt(likesResult.rows[0].count, 10),
+            userLiked: userLikedResult.rows.length > 0
+        });
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Likes:', error);
+        res.status(500).json({ message: 'Likes konnten nicht abgerufen werden.' });
+    }
+});
+
+// Einen Track liken oder Unlike
+router.post('/tracks/:trackId/like', authenticateToken, async (req, res) => {
+    try {
+        const { trackId } = req.params;
+        const userId = req.user.userId;
+
+        const existingLike = await pool.query('SELECT * FROM likes WHERE track_id = $1 AND user_id = $2', [trackId, userId]);
+
+        if (existingLike.rows.length > 0) {
+            // Like entfernen (Unlike)
+            await pool.query('DELETE FROM likes WHERE track_id = $1 AND user_id = $2', [trackId, userId]);
+            res.status(200).json({ message: 'Like entfernt.' });
+        } else {
+            // Track liken
+            await pool.query('INSERT INTO likes (track_id, user_id) VALUES ($1, $2)', [trackId, userId]);
+            res.status(201).json({ message: 'Track geliked.' });
+        }
+    } catch (error) {
+        console.error('Fehler beim Liken/Unliken:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten.' });
+    }
+});
 module.exports = router;
