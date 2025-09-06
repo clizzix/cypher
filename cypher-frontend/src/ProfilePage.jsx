@@ -1,78 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import './ProfilePage.css';
 
 const API_URL = 'http://localhost:3000/api';
 
-const ProfilePage = ({ token, user }) => {
-    const [userTracks, setUserTracks] = useState([]);
+const ProfilePage = ({ token }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
-    const navigate = useNavigate();
 
-    const fetchUserTracks = async () => {
+    const fetchProfile = async () => {
         try {
-            const response = await axios.get(`${API_URL}/tracks/user`, {
+            const response = await axios.get(`${API_URL}/profile`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            setUserTracks(response.data);
+            setUser(response.data);
         } catch (error) {
-            setMessage(error.response?.data?.message || 'Fehler beim Abrufen der Tracks.');
+            setMessage('Fehler beim Abrufen des Profils.');
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchUserTracks();
+        fetchProfile();
     }, [token]);
 
-    const handleDeleteTrack = async (trackId) => {
-        if (window.confirm('Möchtest du diesen Track wirklich löschen?')) {
-            try {
-                await axios.delete(`${API_URL}/tracks/${trackId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                setMessage('Track erfolgreich gelöscht.');
-                fetchUserTracks(); // Tracks nach dem Löschen neu laden
-            } catch (error) {
-                setMessage(error.response?.data?.message || 'Fehler beim Löschen des Tracks.');
-            }
-        }
-    };
+    if (loading) {
+        return <p className="loading-message">Lade Profil...</p>;
+    }
 
-    return (
-        <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-            <h1>Dein Profil</h1>
-            <p><strong>E-Mail:</strong> {user.email}</p>
-            <p><strong>Rolle:</strong> {user.role}</p>
-            {user.artistName && <p><strong>Künstlername:</strong> {user.artistName}</p>}
+    if (!user) {
+        return <p className="message">Profil konnte nicht geladen werden.</p>;
+    }
 
-            <h2>Deine hochgeladenen Tracks</h2>
-            {message && <p style={{ color: 'red' }}>{message}</p>}
-            {userTracks.length > 0 ? (
-                <ul style={{ listStyleType: 'none', padding: 0 }}>
-                    {userTracks.map(track => (
-                        <li key={track.track_id} style={{ border: '1px solid #ccc', margin: '10px 0', padding: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                                <h3>{track.title}</h3>
-                                <p>Genre: {track.genre}</p>
-                                <p>Beschreibung: {track.description}</p>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                {/* "Bearbeiten"-Link hinzufügen */}
-                                <Link to={`/edit-track/${track.track_id}`} style={{ backgroundColor: 'orange', color: 'white', padding: '8px', border: 'none', textDecoration: 'none' }}>
-                                    Bearbeiten
-                                </Link>
-                                <button onClick={() => handleDeleteTrack(track.track_id)} style={{ backgroundColor: 'red', color: 'white', padding: '8px', border: 'none' }}>
-                                    Löschen
-                                </button>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
+return (
+    <div className="profile-container">
+        <h1 className="page-title">Profil</h1>
+        <div className="profile-card">
+            {user.avatar ? (
+                <img src={`${API_URL}/profile/avatar/${user.avatar}?token=${token}`} alt="Profil-Avatar" className="profile-avatar" />
             ) : (
-                <p>Du hast noch keine Tracks hochgeladen.</p>
+                <img src="https://placehold.co/120x120?text=Avatar" alt="Standard-Avatar" className="profile-avatar" />
             )}
+            <div className="profile-info">
+                <h2 className="username">{user.username}</h2>
+                <p className="user-email">{user.email}</p>
+            </div>
+            {message && <p className="message">{message}</p>}
+            <button className="edit-button">Profil bearbeiten</button>
         </div>
-    );
+    </div>
+);
 };
 
 export default ProfilePage;

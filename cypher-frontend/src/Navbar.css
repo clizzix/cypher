@@ -1,0 +1,51 @@
+/* Navbar.css */
+
+.navbar {
+    background-color: #1f2937; /* Dunkelgrauer Hintergrund */
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    color: #e5e7eb; /* Helles Grau für den Text */
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.navbar-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 1.5rem;
+}
+
+.navbar-link {
+    color: #d1d5db; /* Helles Grau */
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease-in-out;
+}
+
+.navbar-link:hover {
+    color: #fff; /* Weiß bei Hover */
+}
+
+.navbar-button {
+    background-color: #ef4444; /* Roter Abmelden-Button */
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 9999px; /* Pillenform */
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.navbar-button:hover {
+    background-color: #dc2626; /* Dunkelroter bei Hover */
+}

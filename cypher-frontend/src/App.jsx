@@ -1,149 +1,143 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
-import UploadPage from './UploadPage';
-import TracksPage from './TracksPage';
-import ProfilePage from './ProfilePage';
-import PlaylistsPage from './PlaylistsPage';
-import NotificationsPage from './NotificationsPage';
-import EditTrackPage from './EditTrackPage';
+
+// Importiere alle Komponenten und CSS-Dateien
+import TracksPage from './TracksPage.jsx';
+import PlaylistsPage from './PlaylistsPage.jsx';
+import UploadPage from './UploadPage.jsx';
+import NotificationsPage from './NotificationsPage.jsx';
+import ProfilePage from './ProfilePage.jsx';
+import './AuthPage.css';
+import './Navbar.css'; // <-- Importiere die neue Navbar.css
 
 const API_URL = 'http://localhost:3000/api';
 
-const MainApp = () => {
+function App() {
+    const [token, setToken] = useState(localStorage.getItem('token'));
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
     const [isLogin, setIsLogin] = useState(true);
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [artistName, setArtistName] = useState('');
-    const [userRole, setUserRole] = useState('listener');
     const [message, setMessage] = useState('');
-    const [user, setUser] = useState(null);
-    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
-        if (storedToken && storedUser) {
-            setUser(JSON.parse(storedUser));
+        if (token && user) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+        } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
         }
-    }, []);
+    }, [token, user]);
 
-    const handleAuth = async (event) => {
-        event.preventDefault();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
         setMessage('');
 
-        const endpoint = isLogin ? 'login' : 'register';
-        const authData = isLogin
-            ? { email, password }
-            : { email, password, userRole, artistName: userRole === 'creator' ? artistName : undefined };
-
         try {
-            const response = await axios.post(`${API_URL}/${endpoint}`, authData);
-            setMessage(response.data.message);
-
-            if (response.data.token) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
-                setUser(response.data.user);
-                navigate('/tracks');
+            let response;
+            if (isLogin) {
+                response = await axios.post(`${API_URL}/login`, { email, password });
+            } else {
+                response = await axios.post(`${API_URL}/register`, { username, email, password });
             }
+            setToken(response.data.token);
+            setUser(response.data.user);
         } catch (error) {
             setMessage(error.response?.data?.message || 'Ein Fehler ist aufgetreten.');
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        setToken(null);
         setUser(null);
-        navigate('/');
+        setMessage('Erfolgreich abgemeldet.');
     };
 
-    if (!user) {
+    if (!token) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial' }}>
-                <h1 className="text-red-500">{isLogin ? 'Anmelden' : 'Registrieren'}</h1>
-                <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
-                    <input
-                        type="email"
-                        placeholder="E-Mail"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="Passwort"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
+            <div className="auth-container">
+                <h1 className="auth-title">{isLogin ? 'Anmelden' : 'Registrieren'}</h1>
+                <form onSubmit={handleSubmit} className="auth-form">
                     {!isLogin && (
-                        <>
-                            <label>
-                                Rolle:
-                                <select value={userRole} onChange={(e) => setUserRole(e.target.value)}>
-                                    <option value="listener">Listener</option>
-                                    <option value="creator">Creator</option>
-                                </select>
-                            </label>
-                            {userRole === 'creator' && (
-                                <input
-                                    type="text"
-                                    placeholder="Künstlername"
-                                    value={artistName}
-                                    onChange={(e) => setArtistName(e.target.value)}
-                                    required
-                                />
-                            )}
-                        </>
+                        <div className="form-group">
+                            <label htmlFor="username" className="form-label">Benutzername</label>
+                            <input
+                                type="text"
+                                id="username"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="form-input"
+                                required
+                            />
+                        </div>
                     )}
-                    <button type="submit">{isLogin ? 'Anmelden' : 'Registrieren'}</button>
+                    <div className="form-group">
+                        <label htmlFor="email" className="form-label">E-Mail</label>
+                        <input
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="form-input"
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="password" className="form-label">Passwort</label>
+                        <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="form-input"
+                            required
+                        />
+                    </div>
+                    <button type="submit" className="auth-button" disabled={loading}>
+                        {loading ? 'Lade...' : isLogin ? 'Anmelden' : 'Registrieren'}
+                    </button>
                 </form>
-                <button onClick={() => setIsLogin(!isLogin)} style={{ marginTop: '10px' }}>
-                    {isLogin ? 'Zum Registrieren wechseln' : 'Zum Anmelden wechseln'}
+                {message && <p className="message">{message}</p>}
+                <button onClick={() => setIsLogin(!isLogin)} className="toggle-button">
+                    {isLogin ? 'Noch kein Konto? Registrieren' : 'Bereits ein Konto? Anmelden'}
                 </button>
-                {message && <p style={{ marginTop: '20px', color: 'red' }}>{message}</p>}
             </div>
         );
     }
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <button onClick={handleLogout}>Abmelden</button>
-                <nav style={{ display: 'flex', gap: '10px' }}>
-                    <Link to="/tracks">Tracks</Link>
-                    <Link to="/playlists">Playlists</Link>
-                    <Link to="/notifications">Benachrichtigungen</Link>
-                    {user.role === 'creator' && (
-                        <>
-                            <Link to="/upload">Upload</Link>
-                            <Link to="/profile">Profil</Link>
-                        </>
-                    )}
-                </nav>
-            </div>
-              <Routes>
-                <Route path="/tracks" element={<TracksPage token={localStorage.getItem('token')} />} />
-                <Route path="/playlists" element={<PlaylistsPage token={localStorage.getItem('token')} user={user} />} />
-                <Route path="/notifications" element={<NotificationsPage token={localStorage.getItem('token')} />} />
-                {user.role === 'creator' && (
-                  <>
-                    <Route path="/upload" element={<UploadPage token={localStorage.getItem('token')} />} />
-                    <Route path="/profile" element={<ProfilePage token={localStorage.getItem('token')} user={user} />} />
-                    <Route path="/edit-track/:trackId" element={<EditTrackPage token={localStorage.getItem('token')} />} /> {/* <-- Diese Zeile hinzufügen */}
-                  </>
-                )}
-              </Routes>
-        </div>
-    );
-};
+        <Router>
+            <nav className="navbar">
+                <Link to="/tracks" className="navbar-brand">Cypher</Link>
+                <ul className="navbar-links">
+                    <li><Link to="/tracks" className="navbar-link">Tracks</Link></li>
+                    <li><Link to="/playlists" className="navbar-link">Playlists</Link></li>
+                    <li><Link to="/upload" className="navbar-link">Upload</Link></li>
+                    <li><Link to="/notifications" className="navbar-link">Notifications</Link></li>
+                    <li><Link to="/profile" className="navbar-link">Profile</Link></li>
+                </ul>
+                <button onClick={handleLogout} className="navbar-button">Abmelden</button>
+            </nav>
 
-const App = () => (
-    <Router>
-        <MainApp />
-    </Router>
-);
+            <div style={{ padding: '20px' }}>
+                <Routes>
+                    <Route path="/tracks" element={<TracksPage token={token} />} />
+                    <Route path="/playlists" element={<PlaylistsPage token={token} user={user} />} />
+                    <Route path="/upload" element={<UploadPage token={token} />} />
+                    <Route path="/notifications" element={<NotificationsPage token={token} />} />
+                    <Route path="/profile" element={<ProfilePage token={token} />} />
+                    <Route path="*" element={<Navigate to="/tracks" />} />
+                </Routes>
+            </div>
+        </Router>
+    );
+}
 
 export default App;

@@ -1,76 +1,122 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import './UploadPage.css';
 
 const API_URL = 'http://localhost:3000/api';
 
 const UploadPage = ({ token }) => {
-    const [file, setFile] = useState(null);
     const [title, setTitle] = useState('');
+    const [artist, setArtist] = useState('');
     const [genre, setGenre] = useState('');
     const [description, setDescription] = useState('');
+    const [audioFile, setAudioFile] = useState(null);
+    const [coverArtFile, setCoverArtFile] = useState(null);
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleUpload = async (e) => {
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (e.target.name === "audioFile") {
+                if (file.type !== "audio/mpeg") {
+                    setMessage("Bitte nur MP3-Dateien hochladen.");
+                    e.target.value = null; // Reset file input
+                    return;
+                }
+                setAudioFile(file);
+            } else if (e.target.name === "coverArtFile") {
+                if (!file.type.startsWith("image/")) {
+                    setMessage("Bitte nur Bild-Dateien hochladen.");
+                    e.target.value = null; // Reset file input
+                    return;
+                }
+                setCoverArtFile(file);
+            }
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
         setMessage('');
 
-        if (!file) {
-            setMessage('Bitte wähle eine Datei aus.')
+        if (!title || !artist || !genre || !audioFile) {
+            setMessage('Bitte füllen Sie alle erforderlichen Felder aus.');
+            setLoading(false);
             return;
         }
 
         const formData = new FormData();
-        formData.append('audioFile', file);
         formData.append('title', title);
+        formData.append('artist_name', artist);
         formData.append('genre', genre);
         formData.append('description', description);
+        formData.append('audio', audioFile);
+        if (coverArtFile) {
+            formData.append('cover_art', coverArtFile);
+        }
 
         try {
-            const response = await axios.post(`${API_URL}/upload`, formData, {
+            await axios.post(`${API_URL}/tracks/upload`, formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data'
                 }
             });
-            setMessage(response.data.message);
-            console.log('upload erfolgreich:', response.data);
+            setMessage('Track erfolgreich hochgeladen!');
+            setTitle('');
+            setArtist('');
+            setGenre('');
+            setDescription('');
+            setAudioFile(null);
+            setCoverArtFile(null);
         } catch (error) {
-            setMessage(error.response?.data?.message || 'Upload fehlgeschlagen.');
-            console.error('Upload-Fehler:', error.response?.data || error.message);
+            setMessage(error.response?.data?.message || 'Fehler beim Hochladen des Tracks.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial' }}>
-            <h1>Musik hochladen</h1>
-            <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
-                <input
-                    type="file"
-                    onChange={(e) => setFile(e.target.files[0])}
-                    required
-                />
-                <input 
-                    type="text"
-                    placeholder="Titel"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                />
-                <input 
-                    type="text"
-                    placeholder="Genre"
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    required
-                />
-                <textarea
-                    placeholder="Beschreibung"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                />
-                <button type="submit">Hochladen</button>
+        <div className="upload-container">
+            <h1 className="page-title">Track hochladen</h1>
+            <form onSubmit={handleSubmit} className="upload-form">
+                <div className="form-group">
+                    <label htmlFor="title" className="form-label">Titel</label>
+                    <input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="form-input" required />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="artist" className="form-label">Künstler</label>
+                    <input type="text" id="artist" value={artist} onChange={(e) => setArtist(e.target.value)} className="form-input" required />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="genre" className="form-label">Genre</label>
+                    <select id="genre" value={genre} onChange={(e) => setGenre(e.target.value)} className="form-select" required>
+                        <option value="">Wähle ein Genre</option>
+                        <option value="Rock">Rock</option>
+                        <option value="Pop">Pop</option>
+                        <option value="Jazz">Jazz</option>
+                        <option value="Hip Hop">Hip Hop</option>
+                        <option value="Electronic">Electronic</option>
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label htmlFor="description" className="form-label">Beschreibung</label>
+                    <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="form-textarea" />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="audioFile" className="form-label">Audio-Datei (MP3)</label>
+                    <input type="file" name="audioFile" id="audioFile" accept="audio/mpeg" onChange={handleFileChange} className="form-input" required />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="coverArtFile" className="form-label">Cover-Art (optional)</label>
+                    <input type="file" name="coverArtFile" id="coverArtFile" accept="image/*" onChange={handleFileChange} className="form-input" />
+                </div>
+                <button type="submit" className="upload-button" disabled={loading}>
+                    {loading ? 'Lade hoch...' : 'Hochladen'}
+                </button>
             </form>
-            {message && <p style={{ marginTop: '20px', color: 'red' }}>{message}</p>}
+            {message && <p className={`message ${message.includes('erfolgreich') ? 'success-message' : 'error-message'}`}>{message}</p>}
         </div>
     );
 };

@@ -1,0 +1,167 @@
+/* PlaylistsPage.css */
+
+.playlists-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: Arial, sans-serif;
+}
+
+.page-title {
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.message {
+  color: #ef4444;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.playlist-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.playlist-input {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.create-button {
+  background-color: #3b82f6;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.create-button:hover {
+  background-color: #2563eb;
+}
+
+.playlist-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.playlist-item {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.playlist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.playlist-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.playlist-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.view-button {
+  background-color: #4b5563;
+}
+
+.view-button:hover {
+  background-color: #374151;
+}
+
+.delete-button {
+  background-color: #ef4444;
+}
+
+.delete-button:hover {
+  background-color: #dc2626;
+}
+
+.expanded-content {
+  margin-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
+.track-list {
+  list-style: none;
+  padding: 0;
+}
+
+.track-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.track-item:last-child {
+  border-bottom: none;
+}
+
+.track-title {
+  font-weight: 500;
+}
+
+.track-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.play-button, .remove-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.play-button {
+  background-color: #22c55e;
+}
+
+.play-button:hover {
+  background-color: #16a34a;
+}
+
+.remove-button {
+  background-color: #f97316;
+}
+
+.remove-button:hover {
+  background-color: #ea580c;
+}
+
+.empty-message {
+  text-align: center;
+  color: #6b7280;
+}

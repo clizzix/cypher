@@ -121,6 +121,29 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// === PROFIL-ROUTE (KORRIGIERT) ===
+router.get('/profile', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // Abfrage zur Abfrage des Benutzers basierend auf der user_id
+        const userResult = await pool.query(
+            'SELECT user_id, email, user_role, artist_name FROM users WHERE user_id = $1',
+            [userId]
+        );
+        const user = userResult.rows[0];
+
+        if (!user) {
+            return res.status(404).json({ message: 'Benutzer nicht gefunden' });
+        }
+
+        res.json(user);
+    } catch (error) {
+        console.error('Profil-Fehler:', error.message);
+        res.status(500).send('Serverfehler');
+    }
+});
+
 // === TRACK-ROUTEN ===
 router.post('/upload', authenticateToken, isCreator, upload.single('audioFile'), async (req, res) => {
     try {
@@ -145,7 +168,7 @@ router.post('/upload', authenticateToken, isCreator, upload.single('audioFile'),
 
         await pool.query(
             `INSERT INTO tracks (title, artist_id, file_key, genre, description)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
             [title, artistId, key, genre, description]
         );
 
@@ -621,7 +644,7 @@ router.post('/tracks/:trackId/like', authenticateToken, async (req, res) => {
 
             // Benachrichtigung
             const trackResult = await pool.query('SELECT artist_id FROM tracks WHERE track_id = $1', [trackId]);
-            const trackCreatorId = trackResult.rows[0]?.artist;
+            const trackCreatorId = trackResult.rows[0]?.artist_id;
 
             if (trackCreatorId && trackCreatorId !== userId) {
                 const senderResult = await pool.query('SELECT artist_name FROM users WHERE user_id = $1', [userId]);

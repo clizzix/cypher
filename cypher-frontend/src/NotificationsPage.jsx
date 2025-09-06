@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './NotificationsPage.css'; // <-- Importiere die neue CSS-Datei
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -15,29 +16,10 @@ const NotificationsPage = ({ token }) => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setNotifications(response.data);
-            setMessage('');
         } catch (error) {
-            console.error('Fehler beim Abrufen der Benachrichtigungen:', error);
-            setMessage('Benachrichtigungen konnten nicht geladen werden.');
+            setMessage(error.response?.data?.message || 'Fehler beim Laden der Benachrichtigungen.');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleMarkAsRead = async (id) => {
-        try {
-            await axios.put(`${API_URL}/notifications/${id}/read`, {}, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            // Update the state to reflect the change
-            setNotifications(prevNotifications =>
-                prevNotifications.map(n =>
-                    n.notification_id === id ? { ...n, is_read: true } : n
-                )
-            );
-        } catch (error) {
-            console.error('Fehler beim Markieren als gelesen:', error);
-            setMessage('Fehler beim Aktualisieren der Benachrichtigung.');
         }
     };
 
@@ -46,50 +28,26 @@ const NotificationsPage = ({ token }) => {
     }, [token]);
 
     if (loading) {
-        return <p>Benachrichtigungen werden geladen...</p>;
+        return <p className="loading-message">Lade Benachrichtigungen...</p>;
     }
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'Arial' }}>
-            <h1>Deine Benachrichtigungen</h1>
-            {message && <p style={{ color: 'red' }}>{message}</p>}
+        <div className="notifications-container">
+            <h1 className="page-title">Benachrichtigungen</h1>
+
+            {message && <p className="message">{message}</p>}
+
             {notifications.length > 0 ? (
-                <ul style={{ listStyleType: 'none', padding: 0 }}>
-                    {notifications.map(notification => (
-                        <li key={notification.notification_id} style={{
-                            border: '1px solid #ccc',
-                            margin: '10px 0',
-                            padding: '15px',
-                            borderRadius: '5px',
-                            backgroundColor: notification.is_read ? '#f0f0f0' : '#ffffff',
-                            position: 'relative'
-                        }}>
-                            <p><strong>Typ:</strong> {notification.notification_type}</p>
-                            <p>{notification.message}</p>
-                            <p style={{ fontSize: '0.8em', color: '#666' }}>
-                                Gesendet am: {new Date(notification.created_at).toLocaleString()}
-                            </p>
-                            {!notification.is_read && (
-                                <button
-                                    onClick={() => handleMarkAsRead(notification.notification_id)}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '10px',
-                                        right: '10px',
-                                        backgroundColor: 'green',
-                                        color: 'white',
-                                        border: 'none',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Als gelesen markieren
-                                </button>
-                            )}
+                <ul className="notifications-list">
+                    {notifications.map((notification) => (
+                        <li key={notification.id} className="notification-item">
+                            <span className="notification-content">{notification.message}</span>
+                            <span className="notification-timestamp">{new Date(notification.timestamp).toLocaleString()}</span>
                         </li>
                     ))}
                 </ul>
             ) : (
-                <p>Du hast keine Benachrichtigungen.</p>
+                <p className="empty-message">Du hast keine Benachrichtigungen.</p>
             )}
         </div>
     );
