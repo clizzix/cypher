@@ -5,12 +5,14 @@ const API_URL = 'http://localhost:3000/api';
 
 const PlaylistsPage = ({ token, user }) => {
   const [playlists, setPlaylists] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [expandedPlaylist, setExpandedPlaylist] = useState(null);
   const [currentAudio, setCurrentAudio] = useState(null);
 
   const fetchPlaylists = async () => {
+    setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/playlists`, {
         headers: {
@@ -21,6 +23,8 @@ const PlaylistsPage = ({ token, user }) => {
     } catch (error) {
       setMessage('Fehler beim Abrufen der Playlists.');
       console.error('Fehler beim Abrufen der Playlists:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,7 +40,7 @@ const PlaylistsPage = ({ token, user }) => {
       setMessage('Fehler beim Abrufen der Playlist-Details.');
       console.error('Fehler beim Abrufen der Playlist-Details:', error);
       return null;
-    }
+    } 
   };
 
   useEffect(() => {
@@ -137,6 +141,10 @@ const PlaylistsPage = ({ token, user }) => {
     }
   };
 
+  if (loading) {
+    return <p>Lade Playlists...</p>
+  }
+
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial' }}>
@@ -155,7 +163,6 @@ const PlaylistsPage = ({ token, user }) => {
 
       {message && <p style={{ color: 'red' }}>{message}</p>}
 
-// ... (oberer Teil des Codes)
 
 <ul style={{ listStyleType: 'none', padding: 0 }}>
     {playlists.length > 0 ? (
