@@ -1,112 +1,162 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './TracksPage.css'; // <-- Importiere die neue CSS-Datei
+import './TracksPage.css'; // Optional für Styling
 
 const API_URL = 'http://localhost:3000/api';
 
 const TracksPage = ({ token }) => {
     const [tracks, setTracks] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedGenre, setSelectedGenre] = useState('');
-    const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(true);
-
-    const fetchTracks = async () => {
-        setLoading(true);
-        setMessage('');
-        try {
-            const response = await axios.get(`${API_URL}/tracks`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { q: searchTerm, genre: selectedGenre }
-            });
-            setTracks(response.data);
-        } catch (error) {
-            setMessage(error.response?.data?.message || 'Tracks konnten nicht geladen werden.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [error, setError] = useState(null);
+    const [commentText, setCommentText] = useState('');
+    const [activeTrack, setActiveTrack] = useState(null);
+    const [comments, setComments] = useState([]);
+    const [likes, setLikes] = useState({ likeCount: 0, userLiked: false });
 
     useEffect(() => {
-        fetchTracks();
-    }, [token, selectedGenre]);
+        const fetchTracks = async () => {
+            try {
+                setLoading(true);
+                const response = await axios.get(`${API_URL}/tracks`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                setTracks(response.data);
+            } catch (err) {
+                setError('Fehler beim Abrufen der Tracks.');
+                console.error('Fetch Tracks Error:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const handleSearch = (e) => {
-        e.preventDefault();
         fetchTracks();
-    };
+    }, [token]);
 
-    const handleDownload = async (trackId) => {
+    const fetchTrackDetails = async (trackId) => {
+        if (activeTrack === trackId) {
+            setActiveTrack(null);
+            return;
+        }
+
         try {
-            const response = await axios.get(`${API_URL}/tracks/download/${trackId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            // Kommentare abrufen
+            const commentsResponse = await axios.get(`${API_URL}/tracks/${trackId}/comments`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
             });
-            window.open(response.data.downloadUrl, '_blank');
-        } catch (error) {
-            setMessage(error.response?.data?.message || 'Download fehlgeschlagen.');
+            setComments(commentsResponse.data);
+
+            // Likes abrufen
+            const likesResponse = await axios.get(`${API_URL}/tracks/${trackId}/likes`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            setLikes(likesResponse.data);
+
+            setActiveTrack(trackId);
+        } catch (err) {
+            console.error('Fehler beim Abrufen der Track-Details:', err);
+            setError('Track-Details konnten nicht geladen werden.');
         }
     };
 
-    if (loading) {
-        return <p className="loading-message">Lade Tracks...</p>;
-    }
+    const handleCommentSubmit = async (e) => {
+        e.preventDefault();
+        if (!commentText.trim() || !activeTrack) return;
+
+        try {
+            await axios.post(`${API_URL}/tracks/${activeTrack}/comments`, { commentText }, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            setCommentText('');
+            fetchTrackDetails(activeTrack); // Kommentare aktualisieren
+        } catch (err) {
+            console.error('Fehler beim Hinzufügen des Kommentars:', err);
+            setError('Kommentar konnte nicht hinzugefügt werden.');
+        }
+    };
+
+    const handleLike = async () => {
+        if (!activeTrack) return;
+        try {
+            await axios.post(`${API_URL}/tracks/${activeTrack}/like`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            fetchTrackDetails(activeTrack); // Likes aktualisieren
+        } catch (err) {
+            console.error('Fehler beim Liken/Unliken:', err);
+            setError('Like konnte nicht verarbeitet werden.');
+        }
+    };
+
+    if (loading) return <div className="loading">Lade Tracks...</div>;
+    if (error) return <div className="error">{error}</div>;
 
     return (
-        <div className="tracks-container">
-            <h1 className="page-title">Tracks entdecken</h1>
-            <form onSubmit={handleSearch} className="search-form">
-                <input
-                    type="text"
-                    placeholder="Suche nach Titel oder Künstler..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="search-input"
-                />
-                <select 
-                    value={selectedGenre} 
-                    onChange={(e) => setSelectedGenre(e.target.value)} 
-                    className="search-select"
-                >
-                    <option value="">Alle Genres</option>
-                    <option value="Rock">Rock</option>
-                    <option value="Pop">Pop</option>
-                    <option value="Jazz">Jazz</option>
-                    <option value="Hip Hop">Hip Hop</option>
-                    <option value="Electronic">Electronic</option>
-                </select>
-                <button type="submit" className="search-button">Suchen</button>
-            </form>
-
-            {message && <p className="message">{message}</p>}
-
-            {tracks.length > 0 ? (
-                <ul className="tracks-list">
-                    {tracks.map(track => (
-                        <li key={track.track_id} className="track-item">
-                            {track.cover_art_key ? (
-                                <img
-                                    src={`${API_URL}/tracks/cover/${track.cover_art_key}?token=${token}`}
-                                    alt={`Cover für ${track.title}`}
-                                    className="track-cover"
-                                />
-                            ) : (
-                                <div className="track-cover-placeholder">
-                                    <p>Kein Cover</p>
-                                </div>
-                            )}
-                            <div className="track-info">
-                                <h3 className="track-title">{track.title}</h3>
-                                <p className="track-artist">von {track.artist_name}</p>
-                                <p className="track-genre">{track.genre}</p>
+        <div className="tracks-page-container">
+            <h2 className="page-title">Entdecke Tracks</h2>
+            <div className="track-list">
+                {tracks.map(track => (
+                    <div key={track.track_id} className="track-card">
+                        <h3 className="track-title">{track.title}</h3>
+                        <p className="track-artist">von {track.artist_name}</p>
+                        <p className="track-genre">Genre: {track.genre}</p>
+                        <button 
+                            className="details-button"
+                            onClick={() => fetchTrackDetails(track.track_id)}
+                        >
+                            {activeTrack === track.track_id ? 'Details ausblenden' : 'Details anzeigen'}
+                        </button>
+                        
+                        {activeTrack === track.track_id && (
+                            <div className="track-details">
                                 <p className="track-description">{track.description}</p>
-                                <button onClick={() => handleDownload(track.track_id)} className="download-button">Download</button>
+                                
+                                <div className="likes-section">
+                                    <button 
+                                        onClick={handleLike} 
+                                        className={`like-button ${likes.userLiked ? 'liked' : ''}`}
+                                    >
+                                        {likes.userLiked ? 'Geliked' : 'Like'} ({likes.likeCount})
+                                    </button>
+                                </div>
+
+                                <div className="comments-section">
+                                    <h4>Kommentare:</h4>
+                                    <ul className="comments-list">
+                                        {comments.length > 0 ? (
+                                            comments.map(comment => (
+                                                <li key={comment.comment_id} className="comment-item">
+                                                    <strong>{comment.artist_name || comment.email}:</strong> {comment.comment_text}
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <p className="no-comments">Noch keine Kommentare.</p>
+                                        )}
+                                    </ul>
+                                    <form onSubmit={handleCommentSubmit} className="comment-form">
+                                        <textarea
+                                            value={commentText}
+                                            onChange={(e) => setCommentText(e.target.value)}
+                                            placeholder="Schreiben Sie einen Kommentar..."
+                                            rows="3"
+                                        />
+                                        <button type="submit" className="submit-comment-button">Kommentar absenden</button>
+                                    </form>
+                                </div>
                             </div>
-                        </li>
-                    ))}
-                </ul>
-            ) : (
-                <p className="message">Keine Tracks gefunden.</p>
-            )}
+                        )}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 };

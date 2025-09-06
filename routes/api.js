@@ -560,6 +560,27 @@ router.get('/tracks/:trackId/comments', authenticateToken, async (req, res) => {
     }
 });
 
+// === KOMMENTAR-ROUTEN ===
+
+// Kommentare für einen bestimmten Track abrufen
+router.get('/tracks/:trackId/comments', authenticateToken, async (req, res) => {
+    try {
+        const { trackId } = req.params;
+        const commentsResult = await pool.query(
+            `SELECT c.*, u.artist_name, u.email
+             FROM comments c
+             JOIN users u ON c.user_id = u.user_id
+             WHERE c.track_id = $1
+             ORDER BY c.created_at ASC`,
+            [trackId]
+        );
+        res.status(200).json(commentsResult.rows);
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Kommentare:', error);
+        res.status(500).json({ message: 'Kommentare konnten nicht abgerufen werden.' });
+    }
+});
+
 // Einen Kommentar zu einem Track hinzufügen
 router.post('/tracks/:trackId/comments', authenticateToken, async (req, res) => {
     try {
