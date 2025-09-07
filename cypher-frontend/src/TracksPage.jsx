@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './TracksPage.css'; // Optional für Styling
+import './TracksPage.css';
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -35,13 +35,16 @@ const TracksPage = ({ token }) => {
     }, [token]);
 
     const fetchTrackDetails = async (trackId) => {
+        // Wenn der gleiche Track erneut geklickt wird, schließe die Details
         if (activeTrack === trackId) {
             setActiveTrack(null);
+            setComments([]);
+            setLikes({ likeCount: 0, userLiked: false });
             return;
         }
 
         try {
-            // Kommentare abrufen
+            // Lade Kommentare für den spezifischen Track
             const commentsResponse = await axios.get(`${API_URL}/tracks/${trackId}/comments`, {
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -49,7 +52,7 @@ const TracksPage = ({ token }) => {
             });
             setComments(commentsResponse.data);
 
-            // Likes abrufen
+            // Lade Likes für den spezifischen Track
             const likesResponse = await axios.get(`${API_URL}/tracks/${trackId}/likes`, {
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -57,7 +60,7 @@ const TracksPage = ({ token }) => {
             });
             setLikes(likesResponse.data);
 
-            setActiveTrack(trackId);
+            setActiveTrack(trackId); // Setze den aktiven Track-Zustand auf die geklickte ID
         } catch (err) {
             console.error('Fehler beim Abrufen der Track-Details:', err);
             setError('Track-Details konnten nicht geladen werden.');
@@ -75,7 +78,7 @@ const TracksPage = ({ token }) => {
                 }
             });
             setCommentText('');
-            fetchTrackDetails(activeTrack); // Kommentare aktualisieren
+            fetchTrackDetails(activeTrack);
         } catch (err) {
             console.error('Fehler beim Hinzufügen des Kommentars:', err);
             setError('Kommentar konnte nicht hinzugefügt werden.');
@@ -90,7 +93,7 @@ const TracksPage = ({ token }) => {
                     Authorization: `Bearer ${token}`
                 }
             });
-            fetchTrackDetails(activeTrack); // Likes aktualisieren
+            fetchTrackDetails(activeTrack);
         } catch (err) {
             console.error('Fehler beim Liken/Unliken:', err);
             setError('Like konnte nicht verarbeitet werden.');
@@ -116,6 +119,7 @@ const TracksPage = ({ token }) => {
                             {activeTrack === track.track_id ? 'Details ausblenden' : 'Details anzeigen'}
                         </button>
                         
+                        {/* Die Details werden nur angezeigt, wenn die trackId mit der aktivenId übereinstimmt */}
                         {activeTrack === track.track_id && (
                             <div className="track-details">
                                 <p className="track-description">{track.description}</p>

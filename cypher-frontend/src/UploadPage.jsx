@@ -17,14 +17,15 @@ const UploadPage = ({ token }) => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (e.target.name === "audioFile") {
+            // 🚨 KORRIGIERT: Überprüfe die Namen, die das Backend erwartet
+            if (e.target.name === "track") {
                 if (file.type !== "audio/mpeg") {
                     setMessage("Bitte nur MP3-Dateien hochladen.");
                     e.target.value = null; // Reset file input
                     return;
                 }
                 setAudioFile(file);
-            } else if (e.target.name === "coverArtFile") {
+            } else if (e.target.name === "cover") {
                 if (!file.type.startsWith("image/")) {
                     setMessage("Bitte nur Bild-Dateien hochladen.");
                     e.target.value = null; // Reset file input
@@ -51,9 +52,11 @@ const UploadPage = ({ token }) => {
         formData.append('artist_name', artist);
         formData.append('genre', genre);
         formData.append('description', description);
-        formData.append('audio', audioFile);
+        
+        // Die korrigierten Feldnamen, die das Backend erwartet
+        formData.append('track', audioFile);
         if (coverArtFile) {
-            formData.append('cover_art', coverArtFile);
+            formData.append('cover', coverArtFile);
         }
 
         try {
@@ -106,11 +109,13 @@ const UploadPage = ({ token }) => {
                 </div>
                 <div className="form-group">
                     <label htmlFor="audioFile" className="form-label">Audio-Datei (MP3)</label>
-                    <input type="file" name="audioFile" id="audioFile" accept="audio/mpeg" onChange={handleFileChange} className="form-input" required />
+                    {/* 🚨 KORRIGIERT: name-Attribut anpassen */}
+                    <input type="file" name="track" id="audioFile" accept="audio/mpeg" onChange={handleFileChange} className="form-input" required />
                 </div>
                 <div className="form-group">
                     <label htmlFor="coverArtFile" className="form-label">Cover-Art (optional)</label>
-                    <input type="file" name="coverArtFile" id="coverArtFile" accept="image/*" onChange={handleFileChange} className="form-input" />
+                    {/* 🚨 KORRIGIERT: name-Attribut anpassen */}
+                    <input type="file" name="cover" id="coverArtFile" accept="image/*" onChange={handleFileChange} className="form-input" />
                 </div>
                 <button type="submit" className="upload-button" disabled={loading}>
                     {loading ? 'Lade hoch...' : 'Hochladen'}
