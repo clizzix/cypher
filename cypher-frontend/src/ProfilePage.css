@@ -1,73 +1,117 @@
-/* ProfilePage.css */
-
-.profile-container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 24px;
+/* Hauptcontainer der Seite */
+.profile-page-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     font-family: Arial, sans-serif;
+    color: #333;
 }
 
+/* Titel und Überschriften */
 .page-title {
-    font-size: 36px;
-    font-weight: bold;
-    margin-bottom: 24px;
     text-align: center;
+    color: #1a1a1a;
+    margin-bottom: 2rem;
+    font-size: 2.5rem;
+    font-weight: bold;
 }
 
-.profile-card {
-    background-color: white;
-    padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+/* Profilansicht */
+.profile-view {
     display: flex;
     flex-direction: column;
-    gap: 16px;
     align-items: center;
+    text-align: center;
 }
 
-.profile-avatar {
-    width: 120px;
-    height: 120px;
+.profile-picture {
+    width: 150px;
+    height: 150px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid #3b82f6;
+    border: 3px solid #007bff;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.profile-info {
-    text-align: center;
+.profile-view p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
 }
 
-.username {
-    font-size: 28px;
+.profile-view strong {
+    color: #555;
+}
+
+/* Bearbeitungsformular */
+.profile-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.profile-edit-form label {
     font-weight: bold;
-    color: #1f2937;
-    margin-bottom: 4px;
+    color: #555;
 }
 
-.user-email {
-    font-size: 16px;
-    color: #6b7280;
+.profile-edit-form input,
+.profile-edit-form textarea {
+    width: 100%;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box; /* Stellt sicher, dass Padding und Border in die Breite einfließen */
+    font-family: inherit;
+    font-size: 1rem;
 }
 
-.edit-button {
-    background-color: #10b981;
-    color: white;
-    padding: 10px 20px;
+.profile-edit-form textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Schaltflächen */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.profile-view button,
+.form-actions button {
+    padding: 0.75rem 1.5rem;
     border: none;
-    border-radius: 6px;
-    font-weight: bold;
+    border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.2s;
-    margin-top: 16px;
-}
-
-.edit-button:hover {
-    background-color: #059669;
-}
-
-.message {
-    text-align: center;
-    margin-top: 16px;
     font-weight: bold;
-    color: #ef4444;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.profile-view button,
+.form-actions button[type="submit"] {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.profile-view button:hover,
+.form-actions button[type="submit"]:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.form-actions button[type="button"] { /* Abbrechen-Button */
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+.form-actions button[type="button"]:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-2px);
 }

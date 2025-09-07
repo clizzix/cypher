@@ -121,26 +121,135 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// === PROFIL-ROUTE (KORRIGIERT) ===
+// GET-Route zur Abfrage der Benutzer-Profil-Daten
 router.get('/profile', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
-
-        // Abfrage zur Abfrage des Benutzers basierend auf der user_id
         const userResult = await pool.query(
-            'SELECT user_id, email, user_role, artist_name FROM users WHERE user_id = $1',
+            `SELECT user_id, email, user_role, artist_name, bio, profile_pic_key
+             FROM users
+             WHERE user_id = $1`,
             [userId]
         );
-        const user = userResult.rows[0];
 
-        if (!user) {
-            return res.status(404).json({ message: 'Benutzer nicht gefunden' });
+        if (userResult.rows.length > 0) {
+            res.status(200).json(userResult.rows[0]);
+        } else {
+            res.status(404).json({ message: 'Profil nicht gefunden.' });
+        }
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Profildaten:', error);
+        res.status(500).json({ message: 'Profil konnte nicht geladen werden.' });
+    }
+});
+
+// PUT-Route zur Aktualisierung des Benutzerprofils
+router.put('/profile', authenticateToken, upload.single('profilePic'), async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { artistName, bio, currentPassword, newPassword } = req.body;
+        let query = 'UPDATE users SET ';
+        const params = [];
+        const updates = [];
+        let paramIndex = 1;
+
+        // Anpassen des Künstlernamens
+        if (artistName) {
+            updates.push(`artist_name = $${paramIndex}`);
+            params.push(artistName);
+            paramIndex++;
         }
 
-        res.json(user);
+        // Anpassen der Bio
+        if (bio) {
+            updates.push(`bio = $${paramIndex}`);
+            params.push(bio);
+            paramIndex++;
+        }
+
+        // Passwort-Aktualisierung
+        if (newPassword && currentPassword) {
+            const userResult = await pool.query('SELECT password_hash FROM users WHERE user_id = $1', [userId]);
+            const user = userResult.rows[0];
+
+            if (!user) {
+                return res.status(404).json({ message: 'Benutzer nicht gefunden.' });
+            }
+
+            const passwordMatch = await bcrypt.compare(currentPassword, user.password_hash);
+            if (!passwordMatch) {
+                return res.status(400).json({ message: 'Aktuelles Passwort ist falsch.' });
+            }
+
+            const newPasswordHash = await bcrypt.hash(newPassword, 10);
+            updates.push(`password_hash = $${paramIndex}`);
+            params.push(newPasswordHash);
+            paramIndex++;
+        }
+
+        // Profilbild-Aktualisierung
+        if (req.file) {
+            const userResult = await pool.query('SELECT profile_pic_key FROM users WHERE user_id = $1', [userId]);
+            const oldPicKey = userResult.rows[0]?.profile_pic_key;
+
+            if (oldPicKey) {
+                const deleteParams = {
+                    Bucket: process.env.S3_BUCKET_NAME,
+                    Key: oldPicKey,
+                };
+                await s3Client.send(new DeleteObjectCommand(deleteParams));
+            }
+
+            const key = `profile-pic-${uuidv4()}-${req.file.originalname}`;
+            const uploadParams = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: key,
+                Body: req.file.buffer,
+                ContentType: req.file.mimetype,
+            };
+            await s3Client.send(new PutObjectCommand(uploadParams));
+
+            updates.push(`profile_pic_key = $${paramIndex}`);
+            params.push(key);
+            paramIndex++;
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ message: 'Keine Daten zur Aktualisierung vorhanden.' });
+        }
+
+        query += updates.join(', ');
+        query += ` WHERE user_id = $${paramIndex} RETURNING user_id, email, user_role, artist_name, bio, profile_pic_key`;
+        params.push(userId);
+
+        const updatedUser = await pool.query(query, params);
+        res.status(200).json({
+            message: 'Profil erfolgreich aktualisiert.',
+            user: updatedUser.rows[0],
+        });
+
     } catch (error) {
-        console.error('Profil-Fehler:', error.message);
-        res.status(500).send('Serverfehler');
+        console.error('Fehler beim Aktualisieren des Profils:', error);
+        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.' });
+    }
+});
+
+// GET-Route für das Profilbild
+router.get('/profile/picture/:key', authenticateToken, async (req, res) => {
+    try {
+        const { key } = req.params;
+        const signedUrl = await getSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: key,
+            }),
+            { expiresIn: 3600 }
+        );
+        res.status(200).json({ url: signedUrl });
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Profilbild-URL:', error);
+        res.status(500).json({ message: 'Fehler beim Abrufen des Profilbildes.' });
     }
 });
 
