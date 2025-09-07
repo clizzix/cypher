@@ -1,55 +1,47 @@
 /* Hauptseite und Titel */
-.tracks-page-container {
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    font-family: Arial, sans-serif;
+.tracks-page-container .page-title {
     color: #333;
-}
-
-.page-title {
     text-align: center;
-    color: #1a1a1a;
-    margin-bottom: 2rem;
+    margin-bottom: 30px;
     font-size: 2.5rem;
-    font-weight: bold;
 }
 
 /* Track-Liste und Karten */
 .track-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
 }
-
-.track-card {
-    background-color: #fff;
-    border: 1px solid #e0e0e0;
+.track-card .track-title {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
     border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    padding: 20px;
+    width: 300px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
 }
 
 .track-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 
 .track-title {
+    color: #ffffff;
     font-size: 1.5rem;
-    font-weight: 600;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    color: #007bff;
+    margin-bottom: 5px;
 }
 
 .track-artist, .track-genre {
-    color: #666;
-    font-size: 1rem;
-    margin-bottom: 0.25rem;
+    color: #b3b3b3;
+    font-size: 0.9rem;
+    margin: 0;
 }
 
 .track-description {
@@ -59,6 +51,57 @@
 }
 
 /* Buttons */
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+.edit-button, .delete-button, .save-button, .cancel-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 50px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.edit-button {
+    background-color: #535353;
+    color: #ffffff;
+}
+
+.edit-button:hover {
+    background-color: #737373;
+}
+
+.delete-button {
+    background-color: #d9534f;
+    color: #ffffff;
+}
+
+.delete-button:hover {
+    background-color: #c9302c;
+}
+
+.save-button {
+    background-color: #5cb85c;
+    color: #ffffff;
+}
+
+.save-button:hover {
+    background-color: #4cae4c;
+}
+
+.cancel-button {
+    background-color: #f0ad4e;
+    color: #ffffff;
+}
+
+.cancel-button:hover {
+    background-color: #ec971f;
+}
+
 .details-button, .submit-comment-button, .like-button {
     padding: 0.75rem 1.5rem;
     border-radius: 5px;
@@ -182,4 +225,190 @@
 
 .error {
     color: #d9534f;
+}
+
+.track-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.track-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.track-cover {
+    width: 80px;
+    height: 80px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.track-cover-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 4px;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px;
+    color: #ccc;
+}
+
+.track-info {
+    flex-grow: 1;
+}
+
+.track-title {
+    margin: 0 0 5px 0;
+    color: #333;
+}
+
+.track-artist,
+.track-genre {
+    margin: 0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.details-button {
+    align-self: flex-end;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s;
+}
+
+.details-button:hover {
+    background-color: #0056b3;
+}
+
+.track-details-container {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.track-description {
+    font-style: italic;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.likes-section, .comments-section {
+    margin-bottom: 15px;
+}
+
+.like-button {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.like-button.liked {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.comment-form textarea {
+    width: 100%;
+    margin-top: 5px;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.submit-comment-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    color: #ffffff;
+    margin-bottom: 5px;
+}
+
+.edit-form input,
+.edit-form select,
+.edit-form textarea {
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    background-color: #333;
+    color: #fff;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s ease-in-out;
+}
+
+.edit-form input:focus,
+.edit-form select:focus,
+.edit-form textarea:focus {
+    border-color: #1ed760;
+}
+
+.edit-form textarea {
+    resize: vertical;
+}
+
+/* --- Messages --- */
+.message {
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.message.success {
+    background-color: #1ed760;
+    color: #ffffff;
+}
+
+.message.error {
+    background-color: #ff4d4f;
+    color: #ffffff;
+}
+
+.loading-container, .error-container {
+    text-align: center;
+    margin-top: 50px;
+    font-size: 1.2rem;
+    color: #b3b3b3;
 }

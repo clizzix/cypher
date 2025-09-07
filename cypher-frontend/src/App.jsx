@@ -8,30 +8,41 @@ import PlaylistsPage from './PlaylistsPage.jsx';
 import UploadPage from './UploadPage.jsx';
 import NotificationsPage from './NotificationsPage.jsx';
 import ProfilePage from './ProfilePage.jsx';
+import MyTracksPage from './MyTracksPage.jsx';
 import './AuthPage.css';
-import './Navbar.css'; // <-- Importiere die neue Navbar.css
+import './Navbar.css';
 
 const API_URL = 'http://localhost:3000/api';
 
 function App() {
-    const [token, setToken] = useState(localStorage.getItem('token'));
-    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+    const [token, setToken] = useState(null);
+    const [user, setUser] = useState(null);
     const [isLogin, setIsLogin] = useState(true);
-    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [artistName, setArtistName] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isAuthLoading, setIsAuthLoading] = useState(true);
 
     useEffect(() => {
-        if (token && user) {
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-        } else {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+
+        if (storedToken && storedUser) {
+            setToken(storedToken);
+            try {
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+            } catch (e) {
+                console.error('Failed to parse user from localStorage', e);
+                // Im Fehlerfall den Benutzer ausloggen, um Probleme zu vermeiden
+                handleLogout();
+            }
         }
-    }, [token, user]);
+        // Setze den Ladezustand auf false, nachdem der localStorage geprüft wurde
+        setIsAuthLoading(false);
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -43,10 +54,12 @@ function App() {
             if (isLogin) {
                 response = await axios.post(`${API_URL}/login`, { email, password });
             } else {
-                response = await axios.post(`${API_URL}/register`, { username, email, password });
+                response = await axios.post(`${API_URL}/register`, { email, password, userRole: 'creator', artistName });
             }
             setToken(response.data.token);
             setUser(response.data.user);
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
         } catch (error) {
             setMessage(error.response?.data?.message || 'Ein Fehler ist aufgetreten.');
         } finally {
@@ -57,27 +70,21 @@ function App() {
     const handleLogout = () => {
         setToken(null);
         setUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setMessage('Erfolgreich abgemeldet.');
     };
+
+    // Zeige einen Ladebildschirm an, bis die Authentifizierungsdaten geladen sind
+    if (isAuthLoading) {
+        return <div className="loading-container">Lade...</div>;
+    }
 
     if (!token) {
         return (
             <div className="auth-container">
                 <h1 className="auth-title">{isLogin ? 'Anmelden' : 'Registrieren'}</h1>
                 <form onSubmit={handleSubmit} className="auth-form">
-                    {!isLogin && (
-                        <div className="form-group">
-                            <label htmlFor="username" className="form-label">Benutzername</label>
-                            <input
-                                type="text"
-                                id="username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="form-input"
-                                required
-                            />
-                        </div>
-                    )}
                     <div className="form-group">
                         <label htmlFor="email" className="form-label">E-Mail</label>
                         <input
@@ -100,6 +107,19 @@ function App() {
                             required
                         />
                     </div>
+                    {!isLogin && (
+                        <div className="form-group">
+                            <label htmlFor="artistName" className="form-label">Künstlername</label>
+                            <input
+                                type="text"
+                                id="artistName"
+                                value={artistName}
+                                onChange={(e) => setArtistName(e.target.value)}
+                                className="form-input"
+                                required
+                            />
+                        </div>
+                    )}
                     <button type="submit" className="auth-button" disabled={loading}>
                         {loading ? 'Lade...' : isLogin ? 'Anmelden' : 'Registrieren'}
                     </button>
@@ -119,7 +139,12 @@ function App() {
                 <ul className="navbar-links">
                     <li><Link to="/tracks" className="navbar-link">Tracks</Link></li>
                     <li><Link to="/playlists" className="navbar-link">Playlists</Link></li>
-                    <li><Link to="/upload" className="navbar-link">Upload</Link></li>
+                    {user?.userRole === 'creator' && (
+                        <>
+                            <li><Link to="/upload" className="navbar-link">Upload</Link></li>
+                            <li><Link to="/my-tracks" className="navbar-link">Meine Tracks</Link></li>
+                        </>
+                    )}
                     <li><Link to="/notifications" className="navbar-link">Notifications</Link></li>
                     <li><Link to="/profile" className="navbar-link">Profile</Link></li>
                 </ul>
@@ -130,9 +155,15 @@ function App() {
                 <Routes>
                     <Route path="/tracks" element={<TracksPage token={token} />} />
                     <Route path="/playlists" element={<PlaylistsPage token={token} user={user} />} />
-                    <Route path="/upload" element={<UploadPage token={token} />} />
                     <Route path="/notifications" element={<NotificationsPage token={token} />} />
                     <Route path="/profile" element={<ProfilePage token={token} />} />
+                    
+                    {user?.userRole === 'creator' && (
+                        <>
+                            <Route path="/upload" element={<UploadPage token={token} />} />
+                            <Route path="/my-tracks" element={<MyTracksPage token={token} />} />
+                        </>
+                    )}
                     <Route path="*" element={<Navigate to="/tracks" />} />
                 </Routes>
             </div>

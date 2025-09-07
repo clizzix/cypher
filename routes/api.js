@@ -55,34 +55,30 @@ const upload = multer({
 
 // === AUTHENTIFIZIERUNGS-ROUTEN ===
 router.post('/register', async (req, res) => {
-    const { email, password, userRole, artistName } = req.body;
-
-    if (!email || !password || !userRole) {
-        return res.status(400).json({ message: 'Bitte gib eine E-Mail, ein Passwort und eine Benutzerrolle an.' });
-    }
-
-    if (userRole === 'creator' && !artistName) {
-        return res.status(400).json({ message: 'Creators müssen einen Künstlernamen angeben.' });
-    }
-
     try {
-        const passwordHash = await bcrypt.hash(password, 10);
+        const { email, password, artistName, userRole } = req.body;
+        
+        // Überprüfen, ob die E-Mail bereits registriert ist
+        const checkUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (checkUser.rows.length > 0) {
+            return res.status(409).json({ message: 'E-Mail ist bereits registriert.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Füge den neuen Benutzer mit seiner Rolle in die Datenbank ein
         const newUser = await pool.query(
             'INSERT INTO users (email, password_hash, user_role, artist_name) VALUES ($1, $2, $3, $4) RETURNING user_id, email, user_role, artist_name',
-            [email, passwordHash, userRole, artistName]
+            [email, hashedPassword, userRole || 'user', artistName]
         );
 
-        res.status(201).json({
-            message: 'Benutzer erfolgreich registriert!',
-            user: newUser.rows[0]
-        });
+        const user = newUser.rows[0];
+        const token = jwt.sign({ userId: user.user_id, userRole: user.user_role }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
+        res.status(201).json({ token, user: { userId: user.user_id, email: user.email, userRole: user.user_role, artistName: user.artist_name } });
     } catch (error) {
-        console.error('Fehler bei der Registrierung:', error.message);
-        if (error.code === '23505') {
-            return res.status(400).json({ message: 'E-Mail oder Künstlername existiert bereits.' });
-        }
-        res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
+        console.error('Fehler bei der Registrierung:', error);
+        res.status(500).json({ message: 'Registrierung fehlgeschlagen.' });
     }
 });
 
@@ -320,7 +316,7 @@ router.get('/tracks', authenticateToken, async (req, res) => {
         const { q, genre } = req.query;
 
         let query = `
-            SELECT t.*, u.artist_name, t.cover_art_key  
+            SELECT t.*, u.artist_name 
             FROM tracks t
             JOIN users u ON t.artist_id = u.user_id
         `;
@@ -352,6 +348,25 @@ router.get('/tracks', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Fehler beim Abrufen der Tracks:', error);
         res.status(500).json({ message: 'Tracks konnten nicht abgerufen werden.' });
+    }
+});
+
+// Gesicherte URL für das Cover-Art abrufen
+router.get('/tracks/cover/:coverArtKey', authenticateToken, async (req, res) => {
+    try {
+        const { coverArtKey } = req.params;
+        const signedUrl = await getSignedUrl(
+            s3Client,
+            new GetObjectCommand({
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: coverArtKey,
+            }),
+            { expiresIn: 3600 } // URL ist 1 Stunde gültig
+        );
+        res.status(200).json({ coverArtUrl: signedUrl });
+    } catch (error) {
+        console.error('Fehler beim Generieren der Cover-Art-URL:', error);
+        res.status(500).json({ message: 'Cover-Art-URL konnte nicht generiert werden.' });
     }
 });
 
@@ -447,15 +462,11 @@ router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('cove
         const artistId = req.user.userId;
 
         // Überprüfen, ob der Benutzer der Ersteller des Tracks ist
-        const trackResult = await pool.query('SELECT track_key, cover_art_key, artist_id FROM tracks WHERE track_id = $1', [trackId]);
+        const trackResult = await pool.query('SELECT track_key, cover_art_key, artist_id FROM tracks WHERE track_id = $1 AND artist_id = $2', [trackId, artistId]);
         const track = trackResult.rows[0];
 
         if (!track) {
-            return res.status(404).json({ message: 'Track nicht gefunden.' });
-        }
-
-        if (track.artist_id !== artistId) {
-            return res.status(403).json({ message: 'Zugriff verweigert. Du bist nicht der Ersteller dieses Tracks.' });
+            return res.status(403).json({ message: 'Zugriff verweigert oder Track nicht gefunden.' });
         }
 
         let query = 'UPDATE tracks SET title = $1, genre = $2, description = $3';
@@ -475,7 +486,7 @@ router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('cove
             }
 
             // Neues Cover-Art-Bild hochladen
-            const key = `cover-${uuidv4()}-${req.file.originalname}`;
+            const key = `covers/${uuidv4()}-${req.file.originalname}`;
             const uploadParams = {
                 Bucket: process.env.S3_BUCKET_NAME,
                 Key: key,
@@ -490,12 +501,15 @@ router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('cove
             paramIndex++;
         }
 
-        query += ` WHERE track_id = $${paramIndex} AND artist_id = $${paramIndex + 1}`;
-        params.push(trackId, artistId);
+        query += ` WHERE track_id = $${paramIndex} RETURNING *`;
+        params.push(trackId);
 
-        await pool.query(query, params);
+        const updatedTrack = await pool.query(query, params);
 
-        res.status(200).json({ message: 'Track erfolgreich aktualisiert.', coverArtKey: newCoverArtKey });
+        res.status(200).json({
+            message: 'Track erfolgreich aktualisiert.',
+            track: updatedTrack.rows[0],
+        });
 
     } catch (error) {
         console.error('Fehler beim Aktualisieren des Tracks:', error);
