@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import TrackCard from './TrackCard'; // Importiere die TrackCard
-import AudioPlayer from './AudioPlayer'; // 🟢 NEU: Importiere den Player
+import TrackCard from './TrackCard'; 
+import AudioPlayer from './AudioPlayer'; 
 import './TracksPage.css';
 
 const API_URL = 'http://localhost:3000/api';
@@ -14,8 +14,9 @@ const TracksPage = ({ token }) => {
     const [activeTrack, setActiveTrack] = useState(null);
     const [comments, setComments] = useState([]);
     const [likes, setLikes] = useState({ likeCount: 0, userLiked: false });
-    // 🟢 NEU: State für den aktuell abgespielten Track
     const [currentTrack, setCurrentTrack] = useState(null); 
+    // 🟢 NEU: Speichere die ID des aktiven Tracks zur Hervorhebung
+    const currentTrackId = currentTrack ? currentTrack.track_id : null; 
 
     useEffect(() => {
         const fetchTracks = async () => {
@@ -44,19 +45,15 @@ const TracksPage = ({ token }) => {
             setLikes({ likeCount: 0, userLiked: false });
             return;
         }
-
+        // [Unveränderte Logik zum Abrufen von Kommentaren und Likes...]
         try {
             const commentsResponse = await axios.get(`${API_URL}/tracks/${trackId}/comments`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setComments(commentsResponse.data);
 
             const likesResponse = await axios.get(`${API_URL}/tracks/${trackId}/likes`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setLikes(likesResponse.data);
             setActiveTrack(trackId);
@@ -66,15 +63,14 @@ const TracksPage = ({ token }) => {
         }
     };
 
+    // [Unveränderte handleCommentSubmit und handleLike Funktionen...]
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
         if (!commentText.trim() || !activeTrack) return;
 
         try {
             await axios.post(`${API_URL}/tracks/${activeTrack}/comments`, { commentText }, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
             setCommentText('');
             fetchTrackDetails(activeTrack);
@@ -88,9 +84,7 @@ const TracksPage = ({ token }) => {
         if (!activeTrack) return;
         try {
             await axios.post(`${API_URL}/tracks/${activeTrack}/like`, {}, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
             fetchTrackDetails(activeTrack);
         } catch (err) {
@@ -99,16 +93,31 @@ const TracksPage = ({ token }) => {
         }
     };
     
-    // 🟢 NEU: Funktion zum Starten der Wiedergabe
+    // Funktion zum Starten der Wiedergabe
     const handlePlayTrack = (track) => {
-        console.log(`Starte Wiedergabe für: ${track.title}`);
-        setCurrentTrack(track); // Setzt den Player-Zustand
+        setCurrentTrack(track); 
     };
 
-    // 🟢 NEU: Callback für das Ende der Wiedergabe (optional für Auto-Next)
+    // 🟢 NEU: Logik für das automatische Abspielen des nächsten Tracks
     const handlePlaybackEnd = () => {
-        console.log("Wiedergabe beendet.");
-        // Optional: Hier könnte die Logik für das automatische Abspielen des nächsten Tracks eingefügt werden.
+        if (!currentTrack) return;
+
+        // 1. Finde den Index des aktuell gespielten Tracks in der Hauptliste
+        const currentIndex = tracks.findIndex(t => t.track_id === currentTrack.track_id);
+        
+        // 2. Bestimme den Index des nächsten Tracks
+        const nextIndex = currentIndex !== -1 ? currentIndex + 1 : -1;
+        
+        // 3. Wenn ein nächster Track existiert, starte die Wiedergabe
+        if (nextIndex < tracks.length && nextIndex !== -1) {
+            const nextTrack = tracks[nextIndex];
+            setCurrentTrack(nextTrack);
+            console.log(`Wiedergabe beendet. Starte nächsten Track: ${nextTrack.title}`);
+        } else {
+            // 4. Andernfalls beende die Wiedergabe (Playlistende)
+            setCurrentTrack(null);
+            console.log("Wiedergabe beendet. Ende der Playlist.");
+        }
     };
 
 
@@ -116,7 +125,6 @@ const TracksPage = ({ token }) => {
     if (error) return <div className="error">{error}</div>;
 
     return (
-        // Fügt eine untere Füllung (z.B. pb-20) hinzu, damit der fixe Player den Inhalt nicht verdeckt
         <div className="tracks-page-container pb-20"> 
             <h2 className="page-title">Entdecke Tracks</h2>
             <div className="track-list">
@@ -126,6 +134,8 @@ const TracksPage = ({ token }) => {
                         track={track}
                         token={token}
                         activeTrack={activeTrack}
+                        // 🟢 NEU: Übergabe der ID des aktuell *abgespielten* Tracks zur Hervorhebung
+                        currentPlayingTrackId={currentTrackId} 
                         setActiveTrack={setActiveTrack}
                         handleLike={handleLike}
                         likes={likes}
@@ -134,13 +144,11 @@ const TracksPage = ({ token }) => {
                         setCommentText={setCommentText}
                         commentText={commentText}
                         fetchTrackDetails={fetchTrackDetails}
-                        // 🟢 NEU: Übergabe der Playback-Funktion an die TrackCard
                         handlePlay={handlePlayTrack} 
                     />
                 ))}
             </div>
 
-            {/* 🟢 NEU: Player Komponente am Ende der Seite, wird nur bei currentTrack angezeigt */}
             {currentTrack && (
                 <AudioPlayer 
                     track={currentTrack} 

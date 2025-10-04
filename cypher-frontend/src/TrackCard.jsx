@@ -3,24 +3,21 @@ import axios from 'axios';
 import AddToPlaylistButton from './AddToPlaylistButton';
 
 const API_URL = 'http://localhost:3000/api';
-// Ersetze dies mit dem Pfad zu deinem Standard-Cover-Bild
 const DEFAULT_COVER_URL = '/images/default-cover.png'; 
 
-const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, likes, comments, handleCommentSubmit, setCommentText, commentText, fetchTrackDetails, handlePlay }) => {
+// 🟢 NEU: currentPlayingTrackId wird als Prop hinzugefügt
+const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, likes, comments, handleCommentSubmit, setCommentText, commentText, fetchTrackDetails, handlePlay, currentPlayingTrackId }) => {
     const [coverArtUrl, setCoverArtUrl] = useState(DEFAULT_COVER_URL);
 
+    // [Unveränderter useEffect zur Abfrage der Cover-Art-URL...]
     useEffect(() => {
         const fetchCoverArtUrl = async () => {
-            // Wir verwenden den S3 Key aus der Datenbank
             const keyToUse = track.cover_art_key || track.file_key; 
             
-            // Wenn der cover_art_key fehlt, versuchen wir nicht, ihn abzurufen, 
-            // und verwenden den Standard-Platzhalter.
             if (keyToUse) {
                 const encodedKey = encodeURIComponent(keyToUse);
                 try {
                     const response = await axios.get(
-                        // Die URL ist: /api/tracks/cover/<key>
                         `${API_URL}/tracks/cover/${encodedKey}`,
                         {
                             headers: {
@@ -31,11 +28,9 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
                     setCoverArtUrl(response.data.url);
                 } catch (error) {
                     console.error('Fehler beim Abrufen der Cover-Art-URL:', error);
-                    // Im Fehlerfall auf das Standard-Bild zurückfallen
                     setCoverArtUrl(DEFAULT_COVER_URL);
                 }
             } else {
-                // Wenn kein Schlüssel vorhanden ist, das Standard-Bild verwenden
                 setCoverArtUrl(DEFAULT_COVER_URL);
             }
         };
@@ -44,9 +39,12 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
     }, [track.cover_art_key, token]); 
 
     const isTrackActive = activeTrack === track.track_id;
+    // 🟢 NEU: Definiere, ob dieser Track gerade abgespielt wird
+    const isThisTrackPlaying = currentPlayingTrackId === track.track_id;
 
     return (
-        <div className="track-card">
+        // 🟢 NEU: Dynamische Klasse 'is-playing' hinzufügen
+        <div className={`track-card ${isThisTrackPlaying ? 'is-playing' : ''}`}>
             <div className="track-header">
                 {/* Zeige das Cover oder den Platzhalter an */}
                 <img 
@@ -62,16 +60,22 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
                 </div>
             </div>
             
-            {/* 🟢 NEU: Gruppe für Play und Details Button */}
             <div className="button-group-top">
                 <button
                     onClick={() => handlePlay(track)}
-                    className="play-button"
+                    // 🟢 NEU: Play-Button-Text/Icon anpassen, wenn der Track läuft
+                    className={`play-button ${isThisTrackPlaying ? 'playing' : ''}`}
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        {isThisTrackPlaying ? (
+                            // Pause-Icon
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm1 5a1 1 0 000 2h4a1 1 0 100-2H8z" clipRule="evenodd" />
+                        ) : (
+                            // Play-Icon
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        )}
                     </svg>
-                    Abspielen
+                    {isThisTrackPlaying ? 'Spielt...' : 'Abspielen'}
                 </button>
                 
                 <button
@@ -82,6 +86,7 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
                 </button>
             </div>
 
+            {/* [Unveränderte Details-Sektion] */}
             {isTrackActive && (
                 <div className="track-details-container">
                     <p className="track-description">{track.description}</p>
