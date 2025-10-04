@@ -313,11 +313,31 @@ router.get('/user/me', authenticateToken, async (req, res) => {
 
 // Track- Routes
 
+// Hinzufügen einer Helferfunktion zum Löschen von S3-Objekten
+const deleteS3Object = async (key) => {
+    if (key) {
+        try {
+            await s3Client.send(new DeleteObjectCommand({
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: key,
+            }));
+            console.log(`[CLEANUP] Erfolgreich S3-Objekt gelöscht: ${key}`);
+        } catch (cleanupError) {
+            console.error(`[CRITICAL] S3-Aufräumvorgang fehlgeschlagen für ${key}:`, cleanupError);
+            // Wir ignorieren den Aufräumfehler, da der Hauptfehler das Problem ist,
+            // aber wir protokollieren ihn.
+        }
+    }
+};
+
 // NEUE POST-Route für den Track-Upload
 router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
     { name: 'track', maxCount: 1 },
     { name: 'cover', maxCount: 1 }
 ]), async (req, res) => {
+    let trackKey = null; // Initialisiert, um im Fehlerfall aufzuräumen
+    let coverKey = null;
+
     try {
         const trackFile = req.files.track ? req.files.track[0] : null;
         const coverFile = req.files.cover ? req.files.cover[0] : null;
@@ -326,8 +346,8 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
             return res.status(400).json({ message: 'Keine Musikdatei zum Hochladen gefunden.' });
         }
 
-        // Upload der Musikdatei zu S3
-        const trackKey = `tracks/${uuidv4()}-${trackFile.originalname}`;
+        // --- 1. S3 Upload der Track-Datei ---
+        trackKey = `tracks/${uuidv4()}-${trackFile.originalname}`;
         const trackUploadParams = {
             Bucket: process.env.S3_BUCKET_NAME,
             Key: trackKey,
@@ -336,9 +356,8 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
         };
         await s3Client.send(new PutObjectCommand(trackUploadParams));
 
-        let coverKey = null;
+        // --- 2. S3 Upload der Cover-Datei (optional) ---
         if (coverFile) {
-            // Upload des Cover-Bildes zu S3
             coverKey = `covers/${uuidv4()}-${coverFile.originalname}`;
             const coverUploadParams = {
                 Bucket: process.env.S3_BUCKET_NAME,
@@ -349,12 +368,16 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
             await s3Client.send(new PutObjectCommand(coverUploadParams));
         }
 
+        // --- 3. Datenbank-Eintrag ---
         const { title, description, genre } = req.body;
         const artistId = req.user.userId;
 
-        // 🟢 KORRIGIERT: Nur eine Spalte für den Track Key verwendet (angenommen: 'track_key').
+        // Protokolliere die Parameter VOR der DB-Abfrage
+        console.log('DB INSERT Parameter:', { title, description, genre, artistId, trackKey, coverKey });
+        
+        // 🟢 KORRIGIERT: 'track_key' zu 'file_key' geändert, um dem Datenbank-Schema zu entsprechen
         const newTrack = await pool.query(
-            "INSERT INTO tracks (title, description, genre, artist_id, track_key, cover_art_key) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+            "INSERT INTO tracks (title, description, genre, artist_id, file_key, cover_art_key) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
             [title, description, genre, artistId, trackKey, coverKey]
         );
 
@@ -362,13 +385,20 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
 
     } catch (error) {
         console.error('Fehler beim Track-Upload:', error);
+
+        // --- 4. Aufräumen im Fehlerfall ---
+        // Lösche Dateien aus S3, falls sie bereits hochgeladen wurden.
+        // Das verhindert, dass Tracks in S3 landen, die nicht in der DB stehen.
+        await deleteS3Object(trackKey);
+        await deleteS3Object(coverKey);
+        
         res.status(500).json({ message: 'Ein Fehler ist beim Hochladen aufgetreten.' });
     }
 });
 
 
 
-// Tracks abrufen (mit Such- und Filterfunktion)
+
 router.get('/tracks', authenticateToken, async (req, res) => {
     try {
         const { q, genre } = req.query;
@@ -431,7 +461,8 @@ router.get('/tracks/user', authenticateToken, async (req, res) => {
 router.get('/tracks/download/:trackId', authenticateToken, async (req, res) => {
     try {
         const { trackId } = req.params;
-        const trackResult = await pool.query('SELECT track_key FROM tracks WHERE track_id = $1', [trackId]);
+        // 🟢 KORRIGIERT: Abfrage auf 'file_key' geändert
+        const trackResult = await pool.query('SELECT file_key FROM tracks WHERE track_id = $1', [trackId]);
         const track = trackResult.rows[0];
 
         if (!track) {
@@ -442,7 +473,7 @@ router.get('/tracks/download/:trackId', authenticateToken, async (req, res) => {
             s3Client,
             new GetObjectCommand({
                 Bucket: process.env.S3_BUCKET_NAME,
-                Key: track.track_key,
+                Key: track.file_key, // 🟢 KORRIGIERT: Verwendung von 'file_key'
             }),
             { expiresIn: 3600 }
         );
@@ -460,7 +491,8 @@ router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res)
         const { trackId } = req.params;
         const artistId = req.user.userId;
 
-        const trackResult = await pool.query('SELECT track_key, cover_art_key, artist_id FROM tracks WHERE track_id = $1', [trackId]);
+        // 🟢 KORRIGIERT: Abfrage auf 'file_key' geändert
+        const trackResult = await pool.query('SELECT file_key, cover_art_key, artist_id FROM tracks WHERE track_id = $1', [trackId]);
         const track = trackResult.rows[0];
 
         if (!track) {
@@ -474,11 +506,11 @@ router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res)
         // 1. Musikdatei aus S3 löschen
         const deleteTrackParams = {
             Bucket: process.env.S3_BUCKET_NAME,
-            Key: track.track_key,
+            Key: track.file_key, // 🟢 KORRIGIERT: Verwendung von 'file_key'
         };
         await s3Client.send(new DeleteObjectCommand(deleteTrackParams));
         
-        // 🟢 ERGÄNZT: Lösche Cover nur, wenn es existiert.
+        // Lösche Cover nur, wenn es existiert.
         if (track.cover_art_key) {
             const deleteCoverParams = {
                 Bucket: process.env.S3_BUCKET_NAME,
@@ -506,8 +538,8 @@ router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('cove
         const { title, genre, description } = req.body;
         const artistId = req.user.userId;
 
-        // 🟢 KORRIGIERT: Besitzer-Überprüfung in der ersten Abfrage.
-        const trackResult = await pool.query('SELECT track_key, cover_art_key FROM tracks WHERE track_id = $1 AND artist_id = $2', [trackId, artistId]);
+        // 🟢 KORRIGIERT: Abfrage auf 'file_key' geändert
+        const trackResult = await pool.query('SELECT file_key, cover_art_key FROM tracks WHERE track_id = $1 AND artist_id = $2', [trackId, artistId]);
         const track = trackResult.rows[0];
 
         if (!track) {
@@ -546,7 +578,7 @@ router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('cove
             paramIndex++;
         }
 
-        // 🟢 KORRIGIERT: Korrekte WHERE-Klausel und Parameter-Index.
+        // Korrekte WHERE-Klausel und Parameter-Index.
         query += ` WHERE track_id = $${paramIndex} AND artist_id = $${paramIndex + 1} RETURNING *`;
         params.push(trackId, artistId);
 
@@ -586,6 +618,7 @@ router.get('/tracks/cover/:key', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Cover-Art-URL konnte nicht generiert werden.' });
     }
 });
+
 // === PLAYLIST-ROUTEN ===
 
 // Alle Playlists eines Benutzers abrufen (für die Playlist-Seite)

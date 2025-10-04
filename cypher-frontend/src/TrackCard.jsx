@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import AddToPlaylistButton from './AddToPlaylistButton';
 
 const API_URL = 'http://localhost:3000/api';
 // Ersetze dies mit dem Pfad zu deinem Standard-Cover-Bild
 const DEFAULT_COVER_URL = '/images/default-cover.png'; 
 
-const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, likes, comments, handleCommentSubmit, setCommentText, commentText, fetchTrackDetails }) => {
+const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, likes, comments, handleCommentSubmit, setCommentText, commentText, fetchTrackDetails, handlePlay }) => {
     const [coverArtUrl, setCoverArtUrl] = useState(DEFAULT_COVER_URL);
 
     useEffect(() => {
@@ -27,11 +28,8 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
                             }
                         }
                     );
-                    // 🟢 KORRIGIERT: Muss 'url' statt 'coverArtUrl' verwenden, um 
-                    // der korrigierten Backend-Antwort ({ url: signedUrl }) zu entsprechen.
                     setCoverArtUrl(response.data.url);
                 } catch (error) {
-                    // Der 404-Fehler wird hier abgefangen.
                     console.error('Fehler beim Abrufen der Cover-Art-URL:', error);
                     // Im Fehlerfall auf das Standard-Bild zurückfallen
                     setCoverArtUrl(DEFAULT_COVER_URL);
@@ -42,11 +40,8 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
             }
         };
 
-        // Abhängigkeit auf cover_art_key beschränken, da file_key nur für die Musikdatei ist
         fetchCoverArtUrl();
-    }, [track.cover_art_key, track.file_key, token]); 
-    // HINWEIS: Ich habe track.file_key aus den Abhängigkeiten entfernt und die Logik so geändert, 
-    // dass nur track.cover_art_key verwendet wird, da dies die logischere Quelle ist.
+    }, [track.cover_art_key, token]); 
 
     const isTrackActive = activeTrack === track.track_id;
 
@@ -67,12 +62,25 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
                 </div>
             </div>
             
-            <button
-                className="details-button"
-                onClick={() => fetchTrackDetails(track.track_id)}
-            >
-                {isTrackActive ? 'Details ausblenden' : 'Details anzeigen'}
-            </button>
+            {/* 🟢 NEU: Gruppe für Play und Details Button */}
+            <div className="button-group-top">
+                <button
+                    onClick={() => handlePlay(track)}
+                    className="play-button"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                    </svg>
+                    Abspielen
+                </button>
+                
+                <button
+                    className="details-button"
+                    onClick={() => fetchTrackDetails(track.track_id)}
+                >
+                    {isTrackActive ? 'Details ausblenden' : 'Details anzeigen'}
+                </button>
+            </div>
 
             {isTrackActive && (
                 <div className="track-details-container">
@@ -85,6 +93,10 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
                         >
                             {likes.userLiked ? 'Geliked' : 'Like'} ({likes.likeCount})
                         </button>
+                        <AddToPlaylistButton
+                            trackId={track.track_id}
+                            token={token}
+                        />
                     </div>
 
                     <div className="comments-section">

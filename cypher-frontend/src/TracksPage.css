@@ -23,6 +23,35 @@
     flex-wrap: wrap;
     gap: 20px;
     justify-content: center;
+    align-items: flex-start;
+}
+
+.button-group-top {
+    display: flex;
+    justify-content: space-between; /* Um die Buttons links und rechts zu platzieren */
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+    margin-bottom: 5px; 
+}
+
+.play-button {
+    background-color: #059669; /* Emerald 600 */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 9999px; /* Pille-Form */
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.play-button:hover {
+    background-color: #06b6d4; /* Türkis-Akzent beim Hover */
 }
 
 .track-card {
@@ -106,6 +135,7 @@
     gap: 10px;
     margin-top: 15px;
 }
+
 .edit-button, .delete-button, .save-button, .cancel-button {
     padding: 10px 20px;
     border: none;
@@ -210,6 +240,10 @@
     align-items: center;
     gap: 1rem;
     margin-bottom: 1.5rem;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
 }
 
 /* 🟢 KORRIGIERT: Like Button (an Dunkel-Design angepasst) */
@@ -312,4 +346,111 @@
     margin-top: 50px;
     font-size: 1.2rem;
     color: #b3b3b3;
+}
+
+/* Styling für AddToPlaylistButton Komponente */
+
+
+.add-to-playlist-container {
+    position: relative;
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.add-to-playlist-button {
+    background-color: #1ed760; 
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px; 
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background-color 0.2s, transform 0.1s;
+    white-space: no-wrap;
+
+}
+
+.add-to-playlist-button:hover {
+    background-color: #1aa34e;
+    transform: translateY(-1px);
+}
+
+.add-to-playlist-button:active {
+    transform: scale(0.98);
+}
+
+.add-to-playlist-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.playlist-dropdown {
+    position: absolute;
+    top: 100%; 
+    left: 0;
+    z-index: 1000;
+    background-color: #2D3748; 
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    padding: 8px 0;
+    margin-top: 8px;
+    min-width: 200px;
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #444;
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 10px 15px;
+    text-align: left;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+    background-color: #4A5568; /* Heller beim Hover */
+}
+
+.dropdown-empty-message {
+    padding: 10px 15px;
+    color: #CBD5E0;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+
+.playlist-message {
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    z-index: 1001;
+}
+
+.playlist-message.success {
+    background-color: #48BB78; /* Grün */
+    color: white;
+}
+
+.playlist-message.error {
+    background-color: #F56565; /* Rot */
+    color: white;
+}
+
+.likes-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
 }

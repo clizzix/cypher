@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import TrackCard from './TrackCard'; // Importiere die neue Komponente
+import TrackCard from './TrackCard'; // Importiere die TrackCard
+import AudioPlayer from './AudioPlayer'; // 🟢 NEU: Importiere den Player
 import './TracksPage.css';
 
 const API_URL = 'http://localhost:3000/api';
@@ -13,6 +14,8 @@ const TracksPage = ({ token }) => {
     const [activeTrack, setActiveTrack] = useState(null);
     const [comments, setComments] = useState([]);
     const [likes, setLikes] = useState({ likeCount: 0, userLiked: false });
+    // 🟢 NEU: State für den aktuell abgespielten Track
+    const [currentTrack, setCurrentTrack] = useState(null); 
 
     useEffect(() => {
         const fetchTracks = async () => {
@@ -95,12 +98,26 @@ const TracksPage = ({ token }) => {
             setError('Like konnte nicht verarbeitet werden.');
         }
     };
+    
+    // 🟢 NEU: Funktion zum Starten der Wiedergabe
+    const handlePlayTrack = (track) => {
+        console.log(`Starte Wiedergabe für: ${track.title}`);
+        setCurrentTrack(track); // Setzt den Player-Zustand
+    };
+
+    // 🟢 NEU: Callback für das Ende der Wiedergabe (optional für Auto-Next)
+    const handlePlaybackEnd = () => {
+        console.log("Wiedergabe beendet.");
+        // Optional: Hier könnte die Logik für das automatische Abspielen des nächsten Tracks eingefügt werden.
+    };
+
 
     if (loading) return <div className="loading">Lade Tracks...</div>;
     if (error) return <div className="error">{error}</div>;
 
     return (
-        <div className="tracks-page-container">
+        // Fügt eine untere Füllung (z.B. pb-20) hinzu, damit der fixe Player den Inhalt nicht verdeckt
+        <div className="tracks-page-container pb-20"> 
             <h2 className="page-title">Entdecke Tracks</h2>
             <div className="track-list">
                 {tracks.map(track => (
@@ -117,9 +134,20 @@ const TracksPage = ({ token }) => {
                         setCommentText={setCommentText}
                         commentText={commentText}
                         fetchTrackDetails={fetchTrackDetails}
+                        // 🟢 NEU: Übergabe der Playback-Funktion an die TrackCard
+                        handlePlay={handlePlayTrack} 
                     />
                 ))}
             </div>
+
+            {/* 🟢 NEU: Player Komponente am Ende der Seite, wird nur bei currentTrack angezeigt */}
+            {currentTrack && (
+                <AudioPlayer 
+                    track={currentTrack} 
+                    token={token}
+                    onPlaybackEnd={handlePlaybackEnd} 
+                />
+            )}
         </div>
     );
 };
