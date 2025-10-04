@@ -80,6 +80,12 @@
     margin-bottom: 10px;
 }
 
+.track-cover {
+    width: 80px;
+    height: 80px;
+    border-radius: 4px;
+    object-fit: cover;
+}
 .track-cover-placeholder {
     width: 80px;
     height: 80px;
@@ -280,12 +286,19 @@
     margin-bottom: 0.5rem;
     background-color: #333;
     color: #fff;
+    box-sizing: border-box;
 }
 
 /* 🟢 KORRIGIERT: Submit Button (an Akzentfarbe angepasst) */
 .submit-comment-button {
     background-color: #1ed760;
     color: #fff;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
     align-self: flex-end;
 }
 

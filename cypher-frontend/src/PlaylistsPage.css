@@ -1,10 +1,12 @@
-/* PlaylistsPage.css */
+/* PlaylistsPage.css - Dark Mode Styling */
 
 .playlists-container {
   max-width: 900px;
   margin: 0 auto;
   padding: 24px;
-  font-family: Arial, sans-serif;
+  font-family: 'Open Sans', sans-serif; /* Optional: Verwende eine saubere Schriftart */
+  color: #e0e0e0; /* Heller Text auf dunklem Hintergrund */
+  background-color: #181818;
 }
 
 .page-title {
@@ -12,42 +14,60 @@
   font-weight: bold;
   margin-bottom: 24px;
   text-align: center;
+  color: #ffffff; /* Weißer Titel */
 }
 
 .message {
-  color: #ef4444;
+  color: #1ed760; /* Erfolg oder wichtige Nachricht in Akzentfarbe */
   margin-bottom: 16px;
   text-align: center;
 }
 
+/* --- Formular zum Erstellen von Playlists --- */
 .playlist-form {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #181818; /* Dunkler Formularhintergrund */
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
 .playlist-input {
   flex-grow: 1;
-  padding: 10px;
-  border: 1px solid #d1d5db;
+  padding: 12px;
+  border: 1px solid #333333; /* Dunkler Rand */
   border-radius: 6px;
+  background-color: #333333; /* Dunkles Eingabefeld */
+  color: #ffffff; /* Heller Text in Eingabe */
+}
+.playlist-input::placeholder {
+    color: #a0a0a0;
+}
+.playlist-input:focus {
+    border-color: #1ed766;
+    outline: none;
 }
 
 .create-button {
-  background-color: #3b82f6;
-  color: white;
+  background-color: #1ed760; /* Akzentfarbe Grün */
+  color: #121212; /* Dunkler Text auf Akzentfarbe */
+  font-weight: bold;
   padding: 10px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 50px; /* Abgerundeter Button */
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
 }
 
 .create-button:hover {
-  background-color: #2563eb;
+  background-color: #1aa34e;
+  transform: scale(1.02);
 }
 
+/* --- Playlist Liste --- */
 .playlist-list {
   list-style: none;
   padding: 0;
@@ -56,10 +76,14 @@
 }
 
 .playlist-item {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 16px;
+  background-color: #282828; /* Dunkle Karte */
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  transition: background-color 0.2s;
+}
+.playlist-item:hover {
+    background-color: #333333; /* Etwas heller beim Hover */
 }
 
 .playlist-header {
@@ -70,44 +94,41 @@
 }
 
 .playlist-name {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: bold;
-  color: #1f2937;
+  color: #ffffff;
 }
 
 .playlist-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .action-button {
-  padding: 8px 12px;
+  padding: 8px 14px;
   border: none;
-  border-radius: 6px;
+  border-radius: 50px;
   cursor: pointer;
-  color: white;
-  transition: background-color 0.2s;
+  color: #ffffff;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.action-button:hover {
+    opacity: 0.8;
 }
 
 .view-button {
-  background-color: #4b5563;
-}
-
-.view-button:hover {
-  background-color: #374151;
+  background-color: #535353; /* Neutrale Farbe für "Ansehen" */
 }
 
 .delete-button {
-  background-color: #ef4444;
+  background-color: #a30000; /* Dunkelrot für "Löschen" */
 }
 
-.delete-button:hover {
-  background-color: #dc2626;
-}
-
+/* --- Erweiterter Inhalt (Tracks) --- */
 .expanded-content {
   margin-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #404040; /* Dunkle Trennlinie */
   padding-top: 16px;
 }
 
@@ -121,7 +142,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #333333;
 }
 
 .track-item:last-child {
@@ -130,6 +151,7 @@
 
 .track-title {
   font-weight: 500;
+  color: #e0e0e0;
 }
 
 .track-actions {
@@ -140,28 +162,35 @@
 .play-button, .remove-button {
   padding: 8px 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: 50px;
   color: white;
   cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
 }
 
 .play-button {
-  background-color: #22c55e;
+  background-color: #1ed760; /* Akzentfarbe Grün */
+  color: #121212;
+  font-weight: bold;
 }
 
 .play-button:hover {
-  background-color: #16a34a;
+  background-color: #1aa34e;
 }
 
 .remove-button {
-  background-color: #f97316;
+  background-color: #616161; /* Weniger aufdringliches Grau/Dunkelrot */
 }
 
 .remove-button:hover {
-  background-color: #ea580c;
+  background-color: #4a4a4a;
 }
 
 .empty-message {
   text-align: center;
-  color: #6b7280;
+  color: #a0a0a0; /* Helles Grau */
+  padding: 20px;
+  background-color: #181818;
+  border-radius: 8px;
 }

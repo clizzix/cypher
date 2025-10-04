@@ -1,10 +1,12 @@
-/* NotificationsPage.css */
+/* NotificationsPage.css - Dark Mode Styling */
 
 .notifications-container {
     max-width: 800px;
     margin: 0 auto;
     padding: 24px;
-    font-family: Arial, sans-serif;
+    font-family: 'Open Sans', sans-serif; /* Einheitliche Schriftart */
+    color: #e0e0e0; /* Heller Standardtext */
+    background-color: #3d3b3b;
 }
 
 .page-title {
@@ -12,15 +14,17 @@
     font-weight: bold;
     margin-bottom: 24px;
     text-align: center;
-    color: black;
+    color: #ffffff; /* Weißer Titel */
 }
 
 .message {
-    color: #ef4444;
+    /* Konsistente Verwendung für Erfolgs- oder Fehlermeldungen */
+    color: #1ed760; 
     margin-bottom: 16px;
     text-align: center;
 }
 
+/* --- Benachrichtigungsliste --- */
 .notifications-list {
     list-style: none;
     padding: 0;
@@ -30,26 +34,44 @@
 }
 
 .notification-item {
-    background-color: white;
+    /* Dunkle Karte für jede Benachrichtigung */
+    background-color: #282828; 
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     padding: 16px;
-    border-left: 5px solid #3b82f6; /* Blauer Rand für visuelle Hervorhebung */
+    
+    /* 🟢 Grüner Rand als Akzent/Indikator für neue/wichtige Benachrichtigungen */
+    border-left: 5px solid #1ed760; 
+    transition: background-color 0.2s;
+}
+
+/* Stil für Benachrichtigungen, die bereits gelesen wurden (falls ein Zustand in der Komponente gesetzt wird) */
+.notification-item.read {
+    background-color: #1a1a1a;
+    border-left-color: #535353; /* Grauer, unauffälliger Rand für Gelesenes */
+}
+
+.notification-item:hover {
+    background-color: #333333; /* Etwas heller beim Hover */
 }
 
 .notification-content {
     font-size: 16px;
-    color: #1f2937;
+    color: #ffffff; /* Weißer Text für den Inhalt */
+    line-height: 1.4;
 }
 
 .notification-timestamp {
     font-size: 12px;
-    color: #6b7280;
+    color: #a0a0a0; /* Helleres Grau für Zeitstempel */
     margin-top: 8px;
     display: block;
 }
 
 .empty-message {
     text-align: center;
-    color: #6b7280;
+    color: #a0a0a0;
+    padding: 20px;
+    background-color: #181818;
+    border-radius: 8px;
 }

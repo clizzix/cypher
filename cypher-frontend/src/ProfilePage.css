@@ -3,23 +3,23 @@
     max-width: 800px;
     margin: 2rem auto;
     padding: 2rem;
-    background-color: #f9f9f9;
+    background-color: #121212; /* Sehr dunkler Hintergrund */
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    font-family: Arial, sans-serif;
-    color: #333;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6); /* Stärkere, dunklere Box-Shadow */
+    font-family: 'Open Sans', sans-serif;
+    color: #e0e0e0; /* Heller Standardtext */
 }
 
 /* Titel und Überschriften */
 .page-title {
     text-align: center;
-    color: #1a1a1a;
+    color: #ffffff; /* Weißer Titel */
     margin-bottom: 2rem;
     font-size: 2.5rem;
     font-weight: bold;
 }
 
-/* Profilansicht */
+/* --- Profilansicht --- */
 .profile-view {
     display: flex;
     flex-direction: column;
@@ -32,9 +32,9 @@
     height: 150px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid #070808;
+    border: 3px solid #1ed760; /* Grüner Akzent-Rand */
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 8px rgba(2, 2, 2, 0.1);
+    box-shadow: 0 0 10px rgba(30, 215, 96, 0.5); /* Leichter grüner Glüheffekt */
 }
 
 .profile-view p {
@@ -44,10 +44,10 @@
 }
 
 .profile-view strong {
-    color: #555;
+    color: #b3b3b3; /* Helles Grau für Beschriftungen */
 }
 
-/* Bearbeitungsformular */
+/* --- Bearbeitungsformular --- */
 .profile-edit-form {
     display: flex;
     flex-direction: column;
@@ -56,19 +56,28 @@
 
 .profile-edit-form label {
     font-weight: bold;
-    color: #555;
+    color: #e0e0e0; /* Weißer Text */
 }
 
 .profile-edit-form input,
-.profile-edit-form textarea {
+.profile-edit-form textarea,
+.profile-edit-form select { /* Hinzugefügt: Select-Feld */
     width: 100%;
     padding: 0.8rem;
     margin-top: 0.5rem;
-    border: 1px solid #ccc;
+    border: 1px solid #333333; /* Dunkler Rand */
     border-radius: 5px;
-    box-sizing: border-box; /* Stellt sicher, dass Padding und Border in die Breite einfließen */
+    box-sizing: border-box;
     font-family: inherit;
     font-size: 1rem;
+    background-color: #282828; /* Dunkleres Eingabefeld */
+    color: #ffffff; /* Weißer Text in den Feldern */
+}
+.profile-edit-form input:focus,
+.profile-edit-form textarea:focus,
+.profile-edit-form select:focus {
+    border-color: #1ed760; /* Grüner Fokus-Rand */
+    outline: none;
 }
 
 .profile-edit-form textarea {
@@ -76,7 +85,7 @@
     min-height: 100px;
 }
 
-/* Schaltflächen */
+/* --- Schaltflächen --- */
 .form-actions {
     display: flex;
     justify-content: flex-end;
@@ -88,30 +97,32 @@
 .form-actions button {
     padding: 0.75rem 1.5rem;
     border: none;
-    border-radius: 5px;
+    border-radius: 50px; /* Einheitlicher abgerundeter Button */
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
+/* Bearbeiten/Speichern (Primär-Button) */
 .profile-view button,
 .form-actions button[type="submit"] {
-    background-color: #007bff;
-    color: #fff;
+    background-color: #1ed760; /* Grüner Akzent */
+    color: #121212; /* Dunkler Text */
 }
 
 .profile-view button:hover,
 .form-actions button[type="submit"]:hover {
-    background-color: #0056b3;
-    transform: translateY(-2px);
+    background-color: #1aa34e; /* Dunkleres Grün */
+    transform: translateY(-1px);
 }
 
-.form-actions button[type="button"] { /* Abbrechen-Button */
-    background-color: #f0f0f0;
-    color: #333;
+/* Abbrechen (Sekundär-Button) */
+.form-actions button[type="button"] { 
+    background-color: #535353; /* Dunkles Grau */
+    color: #ffffff;
 }
 
 .form-actions button[type="button"]:hover {
-    background-color: #e0e0e0;
-    transform: translateY(-2px);
+    background-color: #616161;
+    transform: translateY(-1px);
 }

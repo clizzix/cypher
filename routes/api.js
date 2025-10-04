@@ -136,7 +136,7 @@ router.put('/user/role', authenticateToken, async (req, res) => {
 
     try {
         const result = await pool.query(
-            'UPDATE users SET user_role = $1 WHERE user_id = $2 RETURNING user_role, email, artist_name',
+            'UPDATE users SET user_role = $1 WHERE user_id = $2 RETURNING user_role, email, artist_name, bio, profile_pic_key',
             [newRole, userId]
         );
 
@@ -409,24 +409,6 @@ router.get('/tracks', authenticateToken, async (req, res) => {
     }
 });
 
-// Gesicherte URL für das Cover-Art abrufen
-router.get('/tracks/cover/:coverArtKey', authenticateToken, async (req, res) => {
-    try {
-        const { coverArtKey } = req.params;
-        const signedUrl = await getSignedUrl(
-            s3Client,
-            new GetObjectCommand({
-                Bucket: process.env.S3_BUCKET_NAME,
-                Key: coverArtKey,
-            }),
-            { expiresIn: 3600 } // URL ist 1 Stunde gültig
-        );
-        res.status(200).json({ coverArtUrl: signedUrl });
-    } catch (error) {
-        console.error('Fehler beim Generieren der Cover-Art-URL:', error);
-        res.status(500).json({ message: 'Cover-Art-URL konnte nicht generiert werden.' });
-    }
-});
 
 // Tracks eines bestimmten Benutzers abrufen
 router.get('/tracks/user', authenticateToken, async (req, res) => {
@@ -581,20 +563,24 @@ router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('cove
     }
 });
 // Gesicherte URL für das Cover-Art abrufen
-router.get('/tracks/cover/:coverArtKey', authenticateToken, async (req, res) => {
+router.get('/tracks/cover/:key', authenticateToken, async (req, res) => {
     try {
-        const { coverArtKey } = req.params;
+        const { key } = req.params;
+
+        if (!key) {
+            return res.status(404).json({ message: 'Kein gültiger S3- Schlüssel gefunden.' });
+        }
 
         const signedUrl = await getSignedUrl(
             s3Client,
             new GetObjectCommand({
                 Bucket: process.env.S3_BUCKET_NAME,
-                Key: coverArtKey,
+                Key: key,
             }),
             { expiresIn: 3600 }
         );
 
-        res.status(200).json({ coverArtUrl: signedUrl });
+        res.status(200).json({ url: signedUrl });
     } catch (error) {
         console.error('Fehler beim Generieren der Cover-Art-URL:', error);
         res.status(500).json({ message: 'Cover-Art-URL konnte nicht generiert werden.' });

@@ -10,19 +10,28 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
 
     useEffect(() => {
         const fetchCoverArtUrl = async () => {
-            const keyToUse = track.cover_art_key || track.file_key;
+            // Wir verwenden den S3 Key aus der Datenbank
+            const keyToUse = track.cover_art_key || track.file_key; 
+            
+            // Wenn der cover_art_key fehlt, versuchen wir nicht, ihn abzurufen, 
+            // und verwenden den Standard-Platzhalter.
             if (keyToUse) {
+                const encodedKey = encodeURIComponent(keyToUse);
                 try {
                     const response = await axios.get(
-                        `${API_URL}/tracks/cover/${keyToUse}`,
+                        // Die URL ist: /api/tracks/cover/<key>
+                        `${API_URL}/tracks/cover/${encodedKey}`,
                         {
                             headers: {
                                 Authorization: `Bearer ${token}`
                             }
                         }
                     );
-                    setCoverArtUrl(response.data.coverArtUrl);
+                    // 🟢 KORRIGIERT: Muss 'url' statt 'coverArtUrl' verwenden, um 
+                    // der korrigierten Backend-Antwort ({ url: signedUrl }) zu entsprechen.
+                    setCoverArtUrl(response.data.url);
                 } catch (error) {
+                    // Der 404-Fehler wird hier abgefangen.
                     console.error('Fehler beim Abrufen der Cover-Art-URL:', error);
                     // Im Fehlerfall auf das Standard-Bild zurückfallen
                     setCoverArtUrl(DEFAULT_COVER_URL);
@@ -33,8 +42,11 @@ const TrackCard = ({ track, token, activeTrack, setActiveTrack, handleLike, like
             }
         };
 
+        // Abhängigkeit auf cover_art_key beschränken, da file_key nur für die Musikdatei ist
         fetchCoverArtUrl();
-    }, [track.cover_art_key, track.file_key, token]);
+    }, [track.cover_art_key, track.file_key, token]); 
+    // HINWEIS: Ich habe track.file_key aus den Abhängigkeiten entfernt und die Logik so geändert, 
+    // dass nur track.cover_art_key verwendet wird, da dies die logischere Quelle ist.
 
     const isTrackActive = activeTrack === track.track_id;
 

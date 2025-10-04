@@ -39,6 +39,8 @@
     color: #ffffff; 
     font-size: 1rem;
     outline: none;
+    box-sizing: border-box;
+    margin-bottom: 10px;
 }
 
 .form-input:focus {
