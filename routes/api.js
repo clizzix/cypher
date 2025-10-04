@@ -254,7 +254,7 @@ router.get('/profile/picture/:key', authenticateToken, async (req, res) => {
     }
 });
 
-// === TRACK-ROUTEN ===
+// Track- Routes
 
 // NEUE POST-Route für den Track-Upload
 router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
@@ -262,7 +262,6 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
     { name: 'cover', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        // Überprüfung, ob Dateien vorhanden sind
         const trackFile = req.files.track ? req.files.track[0] : null;
         const coverFile = req.files.cover ? req.files.cover[0] : null;
 
@@ -296,10 +295,10 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
         const { title, description, genre } = req.body;
         const artistId = req.user.userId;
 
-        // 🚨 KORRIGIERT: Füge den Wert für 'file_key' in die Datenbankabfrage ein
+        // 🟢 KORRIGIERT: Nur eine Spalte für den Track Key verwendet (angenommen: 'track_key').
         const newTrack = await pool.query(
-            "INSERT INTO tracks (title, description, genre, artist_id, track_key, file_key, cover_art_key) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-            [title, description, genre, artistId, trackKey, trackKey, coverKey] // 🚨 KORRIGIERT: trackKey wird jetzt sowohl für track_key als auch für file_key verwendet
+            "INSERT INTO tracks (title, description, genre, artist_id, track_key, cover_art_key) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+            [title, description, genre, artistId, trackKey, coverKey]
         );
 
         res.status(201).json({ message: 'Track erfolgreich hochgeladen', track: newTrack.rows[0] });
@@ -309,6 +308,8 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
         res.status(500).json({ message: 'Ein Fehler ist beim Hochladen aufgetreten.' });
     }
 });
+
+
 
 // Tracks abrufen (mit Such- und Filterfunktion)
 router.get('/tracks', authenticateToken, async (req, res) => {
@@ -431,18 +432,23 @@ router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res)
             return res.status(403).json({ message: 'Zugriff verweigert. Du bist nicht der Ersteller dieses Tracks.' });
         }
 
-        const deleteParams = {
+        // 1. Musikdatei aus S3 löschen
+        const deleteTrackParams = {
             Bucket: process.env.S3_BUCKET_NAME,
             Key: track.track_key,
         };
+        await s3Client.send(new DeleteObjectCommand(deleteTrackParams));
+        
+        // 🟢 ERGÄNZT: Lösche Cover nur, wenn es existiert.
+        if (track.cover_art_key) {
+            const deleteCoverParams = {
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: track.cover_art_key,
+            };
+            await s3Client.send(new DeleteObjectCommand(deleteCoverParams));
+        }
 
-        const deleteCoverParams = {
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: track.cover_art_key,
-        };
-
-        await s3Client.send(new DeleteObjectCommand(deleteParams));
-        await s3Client.send(new DeleteObjectCommand(deleteCoverParams));
+        // 2. Eintrag aus der Datenbank löschen
         await pool.query('DELETE FROM tracks WHERE track_id = $1', [trackId]);
 
         res.status(200).json({ message: 'Track erfolgreich gelöscht.' });
@@ -454,15 +460,15 @@ router.delete('/tracks/:trackId', authenticateToken, isCreator, async (req, res)
 
 // === TRACK BEARBEITUNGS-ROUTEN ===
 
-// Track-Metadaten und Cover-Art aktualisieren
+// PUT /tracks/:trackId: Track-Metadaten und Cover-Art aktualisieren
 router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('coverArt'), async (req, res) => {
     try {
         const { trackId } = req.params;
         const { title, genre, description } = req.body;
         const artistId = req.user.userId;
 
-        // Überprüfen, ob der Benutzer der Ersteller des Tracks ist
-        const trackResult = await pool.query('SELECT track_key, cover_art_key, artist_id FROM tracks WHERE track_id = $1 AND artist_id = $2', [trackId, artistId]);
+        // 🟢 KORRIGIERT: Besitzer-Überprüfung in der ersten Abfrage.
+        const trackResult = await pool.query('SELECT track_key, cover_art_key FROM tracks WHERE track_id = $1 AND artist_id = $2', [trackId, artistId]);
         const track = trackResult.rows[0];
 
         if (!track) {
@@ -501,8 +507,9 @@ router.put('/tracks/:trackId', authenticateToken, isCreator, upload.single('cove
             paramIndex++;
         }
 
-        query += ` WHERE track_id = $${paramIndex} RETURNING *`;
-        params.push(trackId);
+        // 🟢 KORRIGIERT: Korrekte WHERE-Klausel und Parameter-Index.
+        query += ` WHERE track_id = $${paramIndex} AND artist_id = $${paramIndex + 1} RETURNING *`;
+        params.push(trackId, artistId);
 
         const updatedTrack = await pool.query(query, params);
 

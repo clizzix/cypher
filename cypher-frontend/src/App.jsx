@@ -9,6 +9,7 @@ import UploadPage from './UploadPage.jsx';
 import NotificationsPage from './NotificationsPage.jsx';
 import ProfilePage from './ProfilePage.jsx';
 import MyTracksPage from './MyTracksPage.jsx';
+import EditTrackPage from './EditTrackPage.jsx';
 import './AuthPage.css';
 import './Navbar.css';
 
@@ -162,6 +163,8 @@ function App() {
                         <>
                             <Route path="/upload" element={<UploadPage token={token} />} />
                             <Route path="/my-tracks" element={<MyTracksPage token={token} />} />
+                            <Route path="/edit-track/:trackId" element={<EditTrackPage token={token} />} />
+
                         </>
                     )}
                     <Route path="*" element={<Navigate to="/tracks" />} />
