@@ -3,7 +3,8 @@
     max-width: 900px;
     margin: 40px auto;
     padding: 20px;
-    background-color: #3d3b3b; /* Dunkler Hintergrund */
+    padding-bottom: 100px;
+    background-color: #374151; /* Dunkler Hintergrund */
     color: #b3b3b3;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -483,4 +484,100 @@
     100% {
         box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
     }
+}
+
+/* ======================================= */
+/* === AUDIO PLAYER STYLING (FIXED) ====== */
+/* ======================================= */
+
+.audio-player-fixed-container {
+    /* 1. Fixierte Positionierung am unteren Rand */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000; /* Stellt sicher, dass es über anderem Inhalt liegt */
+
+    /* 2. Basis-Styling */
+    background-color: #1f2937; /* Äquivalent zu bg-gray-800 */
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5); /* Schatten nach oben */
+    padding: 1rem; /* Äquivalent zu p-4 */
+    border-top: 4px solid #059669; /* Emerald Akzent */
+    transition: all 0.3s ease-in-out;
+}
+
+/* 3. Zentrierung des Inhalts */
+.audio-player-content-wrapper {
+    /* Setzt maximale Breite und zentriert das Element horizontal */
+    max-width: 960px; /* Äquivalent zu max-w-4xl (oder wählen Sie Ihre präferierte Größe) */
+    margin-left: auto;
+    margin-right: auto;
+    
+    /* Layout des Inhalts (Track-Info links, Controls rechts) */
+    display: flex;
+    flex-direction: column; /* Standard auf kleineren Screens */
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Anpassung ab mittleren Bildschirmen */
+@media (min-width: 640px) { /* Äquivalent zu sm: */
+    .audio-player-content-wrapper {
+        flex-direction: row; /* Zu einer Zeile wechseln */
+    }
+}
+
+/* Sektion für Track-Informationen */
+.track-info-section {
+    flex-grow: 1; /* Nimmt den meisten Platz ein */
+    min-width: 0; /* Erlaubt dem Text, bei truncate zu funktionieren */
+    margin-bottom: 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .track-info-section {
+        margin-bottom: 0;
+    }
+}
+
+/* Stil für Audio-Controls */
+.audio-controls-section {
+    width: 100%; /* Volle Breite auf kleinen Screens */
+}
+
+@media (min-width: 640px) {
+    .audio-controls-section {
+        width: 66.666667%; /* Äquivalent zu sm:w-2/3 */
+        max-width: 50%; /* Äquivalent zu lg:w-1/2 */
+    }
+}
+
+/* HTML5 Audio Element */
+.player-audio-element {
+    width: 100%;
+    margin-top: 0.25rem;
+    background-color: #374151; /* Äquivalent zu bg-gray-700 */
+    border-radius: 9999px;
+}
+
+/* Basis-Styling für Text und Farben (wenn nicht bereits global definiert) */
+.audio-player-fixed-container h3 {
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.audio-player-fixed-container p {
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 700;
+    color: #34d399; /* Äquivalent zu text-emerald-400 */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.error-message {
+    color: #f87171; /* text-red-400 */
+    font-size: 0.875rem; /* text-sm */
+    text-align: center;
 }
