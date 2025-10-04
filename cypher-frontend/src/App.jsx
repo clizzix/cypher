@@ -22,27 +22,41 @@ function App() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [artistName, setArtistName] = useState('');
+    // 🟢 NEU: State für die Rollenauswahl bei der Registrierung
+    const [role, setRole] = useState('listener'); 
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
 
     useEffect(() => {
         const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
 
-        if (storedToken && storedUser) {
-            setToken(storedToken);
+        const loadUser = async (token) => {
             try {
-                const parsedUser = JSON.parse(storedUser);
-                setUser(parsedUser);
-            } catch (e) {
-                console.error('Failed to parse user from localStorage', e);
-                // Im Fehlerfall den Benutzer ausloggen, um Probleme zu vermeiden
+                // Sende den Token an die neue Route
+                const response = await axios.get(`${API_URL}/user/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            
+                const fetchedUser = response.data.user;
+                setToken(token);
+                setUser(fetchedUser);
+                // Speichere die aktuellen, validierten Daten erneut
+                localStorage.setItem('user', JSON.stringify(fetchedUser)); 
+
+            } catch (error) {
+                console.error('Token-Validierung fehlgeschlagen', error);
                 handleLogout();
+            } finally {
+                setIsAuthLoading(false);
             }
+        };
+
+        if (storedToken) {
+            loadUser(storedToken);
+        } else {
+            setIsAuthLoading(false);
         }
-        // Setze den Ladezustand auf false, nachdem der localStorage geprüft wurde
-        setIsAuthLoading(false);
     }, []);
 
     const handleSubmit = async (e) => {
@@ -55,7 +69,14 @@ function App() {
             if (isLogin) {
                 response = await axios.post(`${API_URL}/login`, { email, password });
             } else {
-                response = await axios.post(`${API_URL}/register`, { email, password, userRole: 'creator', artistName });
+                // 🟢 ÄNDERUNG: Sende die ausgewählte Rolle (role)
+                response = await axios.post(`${API_URL}/register`, { 
+                    email, 
+                    password, 
+                    userRole: role, 
+                    // Sende artistName nur, wenn die Rolle 'creator' ist
+                    artistName: role === 'creator' ? artistName : undefined 
+                });
             }
             setToken(response.data.token);
             setUser(response.data.user);
@@ -109,17 +130,43 @@ function App() {
                         />
                     </div>
                     {!isLogin && (
-                        <div className="form-group">
-                            <label htmlFor="artistName" className="form-label">Künstlername</label>
-                            <input
-                                type="text"
-                                id="artistName"
-                                value={artistName}
-                                onChange={(e) => setArtistName(e.target.value)}
-                                className="form-input"
-                                required
-                            />
-                        </div>
+                        <>
+                            {/* 🟢 NEU: Rollenauswahl */}
+                            <div className="form-group">
+                                <label htmlFor="role" className="form-label">Ich bin ein</label>
+                                <select
+                                    id="role"
+                                    value={role}
+                                    onChange={(e) => {
+                                        setRole(e.target.value);
+                                        // Setze artistName zurück, wenn nicht Creator gewählt wird
+                                        if (e.target.value !== 'creator') {
+                                            setArtistName('');
+                                        }
+                                    }}
+                                    className="form-input"
+                                    required
+                                >
+                                    <option value="listener">Hörer (Listener)</option>
+                                    <option value="creator">Künstler (Creator)</option>
+                                </select>
+                            </div>
+                            
+                            {/* 🟢 NEU: Künstlername wird nur bei Auswahl von 'creator' angezeigt */}
+                            {role === 'creator' && (
+                                <div className="form-group">
+                                    <label htmlFor="artistName" className="form-label">Künstlername</label>
+                                    <input
+                                        type="text"
+                                        id="artistName"
+                                        value={artistName}
+                                        onChange={(e) => setArtistName(e.target.value)}
+                                        className="form-input"
+                                        required
+                                    />
+                                </div>
+                            )}
+                        </>
                     )}
                     <button type="submit" className="auth-button" disabled={loading}>
                         {loading ? 'Lade...' : isLogin ? 'Anmelden' : 'Registrieren'}
@@ -157,14 +204,14 @@ function App() {
                     <Route path="/tracks" element={<TracksPage token={token} />} />
                     <Route path="/playlists" element={<PlaylistsPage token={token} user={user} />} />
                     <Route path="/notifications" element={<NotificationsPage token={token} />} />
-                    <Route path="/profile" element={<ProfilePage token={token} />} />
+                    {/* 🟢 HINWEIS: Hier sollte die ProfilePage die Möglichkeit zur Rollenänderung enthalten */}
+                    <Route path="/profile" element={<ProfilePage token={token} user={user} setUser={setUser} />} />
                     
                     {user?.userRole === 'creator' && (
                         <>
                             <Route path="/upload" element={<UploadPage token={token} />} />
                             <Route path="/my-tracks" element={<MyTracksPage token={token} />} />
                             <Route path="/edit-track/:trackId" element={<EditTrackPage token={token} />} />
-
                         </>
                     )}
                     <Route path="*" element={<Navigate to="/tracks" />} />

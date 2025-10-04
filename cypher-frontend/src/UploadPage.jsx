@@ -82,7 +82,7 @@ const UploadPage = ({ token }) => {
 
     return (
         <div className="upload-container">
-            <h1 className="page-title">Track hochladen</h1>
+            <h1 className="page-title">Lade deinen Track hoch!</h1>
             <form onSubmit={handleSubmit} className="upload-form">
                 <div className="form-group">
                     <label htmlFor="title" className="form-label">Titel</label>

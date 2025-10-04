@@ -9,6 +9,8 @@ const pool = require('../db');
 
 const router = express.Router();
 
+
+
 // Middleware zur Überprüfung des JWT-Tokens
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -119,6 +121,41 @@ router.post('/login', async (req, res) => {
     } catch (error) {
         console.error('Fehler bei der Anmeldung:', error.message);
         res.status(500).json({ message: 'Ein Fehler ist aufgetreten. Bitte versuche es später erneut.' });
+    }
+});
+
+// Geschützte Route zur Änderung der Benutzerrolle
+// Verwenden Sie den authenticateToken Middleware zum Schutz
+router.put('/user/role', authenticateToken, async (req, res) => {
+    const { newRole } = req.body;
+    const userId = req.user.userId; // Aus dem JWT in authenticateToken
+
+    if (!['creator', 'listener'].includes(newRole)) {
+        return res.status(400).json({ message: 'Ungültige neue Rolle.' });
+    }
+
+    try {
+        const result = await pool.query(
+            'UPDATE users SET user_role = $1 WHERE user_id = $2 RETURNING user_role, email, artist_name',
+            [newRole, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Benutzer nicht gefunden.' });
+        }
+
+        const updatedUser = result.rows[0];
+
+        // 🟢 Frontend-Daten aktualisieren:
+        // Sende die neuen Benutzerdaten zurück, damit das Frontend sie im localStorage/state speichern kann.
+        res.json({ 
+            message: 'Rolle erfolgreich aktualisiert.', 
+            user: updatedUser 
+        });
+
+    } catch (error) {
+        console.error('Fehler beim Aktualisieren der Rolle:', error);
+        res.status(500).json({ message: 'Interner Serverfehler beim Rollen-Update.' });
     }
 });
 
@@ -251,6 +288,26 @@ router.get('/profile/picture/:key', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Fehler beim Abrufen der Profilbild-URL:', error);
         res.status(500).json({ message: 'Fehler beim Abrufen des Profilbildes.' });
+    }
+});
+
+// Neue Route, um Benutzerdaten anhand des Tokens abzurufen
+router.get('/user/me', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const userResult = await pool.query(
+            'SELECT user_id, email, user_role, artist_name FROM users WHERE user_id = $1',
+            [userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Benutzer nicht gefunden.' });
+        }
+
+        res.json({ user: userResult.rows[0] });
+    } catch (error) {
+        console.error('Fehler beim Abrufen der Benutzerdaten:', error);
+        res.status(500).json({ message: 'Fehler beim Laden der Benutzerdaten.' });
     }
 });
 

@@ -1,79 +1,79 @@
-/* AuthPage.css */
-
+/* Hauptcontainer für die Anmelde-/Registrierungsseite */
 .auth-container {
     max-width: 400px;
-    margin: 0 auto;
-    padding: 24px;
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    margin: 80px auto;
+    padding: 30px;
+    /* 🟢 Dunkler Formularhintergrund */
+    background-color: #181818; 
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    /* 🟢 Allgemeine Textfarbe für den Container */
+    color: #b3b3b3; 
 }
 
+/* Titel (Anmelden/Registrieren) */
 .auth-title {
-    font-size: 36px;
-    font-weight: bold;
-    margin-bottom: 24px;
+    font-size: 2rem;
     text-align: center;
+    margin-bottom: 25px;
+    /* 🟢 Helle Farbe für den Titel */
+    color: #ffffff; 
 }
 
-.auth-form {
-    background-color: white;
-    padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
+/* Labels der Formulare (Kritischer Punkt) */
 .form-label {
-    font-weight: 600;
-    color: #4b5563;
+    font-weight: bold;
+    margin-bottom: 5px;
+    /* 🟢 Helle Farbe für die Lesbarkeit */
+    color: #ffffff; 
 }
 
+/* Eingabefelder */
 .form-input {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #d1d5db;
+    padding: 12px;
+    border: 1px solid #333; /* Dunkler Rand */
     border-radius: 6px;
+    /* 🟢 Dunkler Hintergrund für das Feld und heller Text */
+    background-color: #333; 
+    color: #ffffff; 
+    font-size: 1rem;
+    outline: none;
 }
 
+.form-input:focus {
+    border-color: #1ed760; /* Akzentfarbe beim Fokussieren */
+}
+
+/* Buttons und Umschalt-Buttons */
 .auth-button {
-    background-color: #3b82f6;
-    color: white;
+    background-color: #1ed760;
+    color: #ffffff;
     padding: 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: 50px;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s;
+    width: 100%;
+    margin-top: 15px;
 }
 
 .auth-button:hover {
-    background-color: #2563eb;
+    background-color: #1aa34e;
 }
 
 .toggle-button {
     background: none;
     border: none;
-    color: #3b82f6;
+    color: #b3b3b3;
     cursor: pointer;
-    font-size: 14px;
-    margin-top: 16px;
-    text-decoration: underline;
+    text-align: center;
+    margin-top: 15px;
+    padding: 5px;
+    font-size: 0.9rem;
 }
 
-.message {
-    text-align: center;
-    margin-top: 16px;
-    font-weight: bold;
-    color: #ef4444;
+.toggle-button:hover {
+    color: #ffffff;
 }
