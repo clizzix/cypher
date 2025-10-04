@@ -1,20 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react'; // Importiere useCallback
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './ProfilePage.css';
 
 const API_URL = 'http://localhost:3000/api';
 
-// ERGÄNZT: Erwarte 'user' und 'setUser' als Props aus App.jsx
 const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
 
     const navigate = useNavigate();
-
-    // LOKALER ZUSTAND: Wird verwendet, um die Daten im Formular und der Anzeige zu handhaben
     const [user, setUser] = useState(appUser);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    // 🟢 NEU: Dedizierter State für Erfolgsmeldungen
     const [successMessage, setSuccessMessage] = useState(null); 
     const [isEditing, setIsEditing] = useState(false);
     
@@ -30,34 +26,29 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
 
     // Hilfsfunktion zur Aktualisierung des lokalen und globalen User-Zustands
     const updateLocalAndGlobalUser = (updatedUserData) => {
-        // Sicherstellen, dass die Daten das erwartete Format haben, falls das Backend ein gemischtes Objekt liefert
         const finalUserData = {
+            ...user, 
             ...updatedUserData,
-            // Backend liefert oft snake_case, Frontend nutzt camelCase
-            userRole: updatedUserData.user_role || updatedUserData.userRole,
-            artistName: updatedUserData.artist_name || updatedUserData.artistName,
-            profile_pic_key: updatedUserData.profile_pic_key || updatedUserData.profilePicKey,
+            userRole: updatedUserData.user_role || updatedUserData.userRole || user.userRole,
+            artistName: updatedUserData.artist_name || updatedUserData.artistName || user.artistName,
+            profile_pic_key: updatedUserData.profile_pic_key || updatedUserData.profilePicKey || user.profile_pic_key,
         };
         
         setUser(finalUserData);
         
-        // Aktualisiere den globalen State in App.jsx und localStorage
         if (setAppUser) {
             setAppUser(finalUserData);
-            localStorage.setItem('user', JSON.stringify(finalUserData));
+            // localStorage.setItem('user', JSON.stringify(finalUserData)); 
         }
     };
     
-    // 🟢 NEU: Funktion zum Abrufen und Setzen der Profilbild-URL basierend auf dem Key
+    // Funktion zum Abrufen und Setzen der Profilbild-URL basierend auf dem Key
     const fetchAndSetProfilePicUrl = useCallback(async (key) => {
         if (!key || key.length === 0) {
             setProfilePicUrl(null);
-            console.log('DEBUG (URL Fetch): Keine profile_pic_key vorhanden.');
             return;
         }
         
-        // 🛠️ DEBUG-LOG 1: Prüfe, ob der Key vom Frontend gefunden wurde
-        console.log('DEBUG (URL Fetch): profile_pic_key gefunden:', key); 
         try {
             const picResponse = await axios.get(`${API_URL}/profile/picture/${key}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -66,11 +57,7 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
             const newUrl = picResponse.data.url || null;
             setProfilePicUrl(newUrl);
             
-            // 🛠️ DEBUG-LOG 2: Prüfe, welche URL abgerufen wurde
-            console.log('DEBUG (URL Fetch): Profilbild-URL erfolgreich abgerufen:', newUrl); 
-            
         } catch (picErr) {
-            // 🛠️ DEBUG-LOG 3: Fehler beim Abrufen der URL
             console.error('Fehler beim Abrufen der Profilbild-URL:', picErr.message);
             setProfilePicUrl(null);
         }
@@ -80,35 +67,31 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
     const fetchProfileData = useCallback(async () => {
         try {
             setLoading(true);
-            setSuccessMessage(null); // Setze Meldungen beim Neuladen zurück
+            setSuccessMessage(null); 
             setError(null);
             
             // 1. Stammdaten abrufen
-            const response = await axios.get(`${API_URL}/user/me`, {
+            const response = await axios.get(`${API_URL}/profile`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const userData = response.data.user;
+            const userData = response.data;
 
-            if (!userData) {
+            if (!userData || !userData.user_id) {
                 throw new Error("Benutzerdaten konnten nicht geladen werden.");
             }
             
-            // 🛠️ FINAL DEBUG-LOG: Ist der Key beim initialen Laden vom Server vorhanden?
-            console.log('DEBUG (Initial Fetch): Server-Daten erhalten, profile_pic_key:', userData.profile_pic_key); 
-
-            // State initialisieren/aktualisieren (setzt user, appUser, localStorage)
             updateLocalAndGlobalUser(userData);
 
             setFormData({
-                artistName: userData.artistName || '',
+                artistName: userData.artist_name || '', 
                 bio: userData.bio || '',
-                userRole: userData.userRole || 'listener', 
+                userRole: userData.user_role || 'listener', 
                 profilePic: null,
                 currentPassword: '',
                 newPassword: '',
             });
 
-            // 2. Profilbild-URL abrufen (nutzt die neue Funktion)
+            // 2. Profilbild-URL abrufen
             await fetchAndSetProfilePicUrl(userData.profile_pic_key); 
 
         } catch (err) {
@@ -117,25 +100,18 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
         } finally {
             setLoading(false);
         }
-    }, [token, fetchAndSetProfilePicUrl]); // Abhängigkeit von fetchAndSetProfilePicUrl hinzugefügt
+    }, [token, fetchAndSetProfilePicUrl]); 
 
 
     useEffect(() => {
         fetchProfileData();
-    }, [fetchProfileData]); // Abhängigkeit auf fetchProfileData, da es nun useCallback ist
+    }, [fetchProfileData]); 
 
-
-    // Aktualisiert den Zustand, wenn Props sich ändern (z.B. nach globalem Update in App.jsx)
     useEffect(() => {
-        setUser(appUser);
-        setFormData(prevState => ({
-            ...prevState,
-            userRole: appUser?.userRole || 'listener',
-            artistName: appUser?.artistName || '',
-        }));
-        // Wenn der globale user sich ändert, muss das Bild ebenfalls neu geladen werden, 
-        // falls der Key sich im Hintergrund geändert hat.
-        fetchAndSetProfilePicUrl(appUser?.profile_pic_key); 
+        if (appUser) {
+            setUser(appUser);
+            fetchAndSetProfilePicUrl(appUser.profile_pic_key);
+        }
     }, [appUser, fetchAndSetProfilePicUrl]);
 
 
@@ -153,11 +129,7 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             
-            // 🟢 FIX 2: Merge the sparse response data with the full current user data (user)
-            // Dies garantiert, dass der profile_pic_key nicht überschrieben wird, wenn der Server ihn weglässt.
-            const updatedUserFromResponse = response.data.user;
-            const mergedUser = { ...user, ...updatedUserFromResponse }; 
-            updateLocalAndGlobalUser(mergedUser);
+            updateLocalAndGlobalUser(response.data.user);
             
             return 'Rolle erfolgreich aktualisiert!';
         } catch (err) {
@@ -170,11 +142,11 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
-        setSuccessMessage(null); // Setze vorherige Erfolgsmeldungen zurück
+        setSuccessMessage(null); 
         let roleUpdateMessage = '';
         let profileUpdateMessage = '';
-        let newProfilePicKey = null; // Speichert den Key, falls das Bild hochgeladen wurde
-        let profileUpdateSucceeded = false; // 🚩 Neu: Flag für Profil-Update-Erfolg
+        let newProfilePicKey = null; 
+        let profileUpdateSucceeded = false; 
 
         // 1. ROLLEN-UPDATE SEPARAT VERARBEITEN
         if (formData.userRole !== user.userRole) {
@@ -187,7 +159,6 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
         const currentBio = user.bio || '';
 
 
-        // Überprüfe, ob sich Name oder Bio geändert haben
         const isNameChanged = formData.artistName !== currentArtistName;
         const isBioChanged = formData.bio !== currentBio;
         const isPasswordChanged = !!formData.newPassword;
@@ -210,7 +181,6 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
         }
 
 
-        // Führe nur das Profil-Update aus, wenn andere Felder geändert wurden
         if (isNameChanged || isBioChanged || isPicChanged || isPasswordChanged) {
             try {
                 const response = await axios.put(`${API_URL}/profile`, data, {
@@ -220,21 +190,13 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
                     }
                 });
                 
-                // 🛠️ DEBUG-LOG 5: Prüfe die Antwort des Servers nach dem PUT-Update
-                console.log('DEBUG: PUT response data (sollte neuen profile_pic_key enthalten):', response.data);
-                
-                // 🟢 FIX 1: Merge die Antwortdaten mit dem aktuellen 'user'-State, 
-                // um sicherzustellen, dass der profile_pic_key erhalten bleibt, falls der Server ihn nicht zurückgibt.
-                const mergedUserAfterProfileUpdate = { ...user, ...response.data.user };
-                updateLocalAndGlobalUser(mergedUserAfterProfileUpdate);
+                updateLocalAndGlobalUser(response.data.user);
                 profileUpdateMessage = 'Profil erfolgreich aktualisiert.';
-                profileUpdateSucceeded = true; // 🚩 Update war erfolgreich
+                profileUpdateSucceeded = true; 
                 
-                // 🟢 ZUSÄTZLICH: Neuen Key aus der gemergten Antwort extrahieren
-                newProfilePicKey = mergedUserAfterProfileUpdate.profile_pic_key || mergedUserAfterProfileUpdate.profilePicKey;
+                newProfilePicKey = response.data.user.profile_pic_key || response.data.user.profilePicKey;
 
             } catch (err) {
-                // Setze die Fehlermeldung, bevor wir den Fehler loggen
                 profileUpdateMessage = err.response?.data?.message || 'Fehler beim Aktualisieren des Profils.';
                 console.error('Update Profile Error:', err.response?.data || err);
             }
@@ -242,7 +204,6 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
         
         // 3. FINISH
         
-        // Setze Passwörter und Bild zurück
         setFormData(prevState => ({
             ...prevState,
             profilePic: null,
@@ -250,18 +211,15 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
             newPassword: '',
         }));
 
-        // 🟢 Wenn ein Bild hochgeladen wurde UND das Profil-Update erfolgreich war, rufen wir die URL ab.
-        if (profileUpdateSucceeded && newProfilePicKey) {
-            // Holen wir JETZT SOFORT die neue URL.
+        if (profileUpdateSucceeded && (newProfilePicKey || newProfilePicKey === null)) {
             await fetchAndSetProfilePicUrl(newProfilePicKey);
         } 
         
-        // Zeige kombinierte Fehlermeldung
         const finalErrors = [roleUpdateMessage, profileUpdateMessage].filter(msg => msg && !msg.includes('erfolgreich')).join('; ') || null;
         const finalSuccesses = [roleUpdateMessage, profileUpdateMessage].filter(msg => msg && msg.includes('erfolgreich')).join('; ') || null;
 
         setError(finalErrors);
-        setSuccessMessage(finalSuccesses); // 🟢 Verwende neuen Success State
+        setSuccessMessage(finalSuccesses); 
 
         setIsEditing(false);
         setLoading(false);
@@ -275,25 +233,29 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
             <h2 className="page-title">Mein Profil</h2>
             {!isEditing ? (
                 <div className="profile-view">
-                    {/* 🟢 profilePicUrl sollte jetzt korrekt gesetzt sein */}
-                    {profilePicUrl && <img src={profilePicUrl} alt="Profilbild" className="profile-picture" />}
+                    {profilePicUrl ? (
+                         <img src={profilePicUrl} alt="Profilbild" className="profile-picture" />
+                    ) : (
+                        <div className="profile-picture-placeholder">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10 text-gray-500">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 19.5a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 0 12 17.25c-1.35 0-2.65-.29-3.9-.84-1.25-.55-2.4-.84-3.599-.84Z" />
+                            </svg>
+                        </div>
+                    )}
                     <p><strong>Name:</strong> {user.artistName || user.email}</p>
                     {user.bio && <p><strong>Bio:</strong> {user.bio}</p>}
                     <p><strong>E-Mail:</strong> {user.email}</p>
-                    {/* Anzeige der aktuellen Rolle */}
                     <p><strong>Rolle:</strong> <span style={{ fontWeight: 'bold', color: user.userRole === 'creator' ? '#1ed760' : '#b3b3b3' }}>{user.userRole}</span></p>
                     <button onClick={() => {
                         setIsEditing(true);
                         setError(null);
                         setSuccessMessage(null);
                     }}>Profil bearbeiten</button>
-                    {/* 🟢 Zeige Success und Error getrennt an */}
                     {successMessage && <p style={{ color: '#1ed760', marginTop: '10px' }}>{successMessage}</p>}
                     {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
                 </div>
             ) : (
                 <form onSubmit={handleUpdateSubmit} className="profile-edit-form">
-                    {/* Rollenauswahl */}
                     <label>
                         Rolle:
                         <select
@@ -337,6 +299,7 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
                             onChange={handleChange}
                             disabled={loading}
                         />
+                        {profilePicUrl && <img src={profilePicUrl} alt="Aktuelles Profilbild" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', marginTop: '10px' }} />}
                     </label>
                     <label>
                         Aktuelles Passwort (zum Aktualisieren erforderlich):
@@ -362,10 +325,9 @@ const ProfilePage = ({ token, user: appUser, setUser: setAppUser }) => {
                         <button type="submit" disabled={loading}>{loading ? 'Speichere...' : 'Änderungen speichern'}</button>
                         <button type="button" onClick={() => {
                             setIsEditing(false);
-                            fetchProfileData(); // Daten neu laden, um Änderungen im Formular zu verwerfen
+                            fetchProfileData(); 
                         }} disabled={loading}>Abbrechen</button>
                     </div>
-                    {/* 🔴 Anpassung der Fehleranzeige (keine 'erfolgreich' Prüfung mehr nötig) */}
                     {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
                 </form>
             )}
