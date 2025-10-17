@@ -396,9 +396,6 @@ router.post('/tracks/upload', authenticateToken, isCreator, upload.fields([
     }
 });
 
-
-
-
 router.get('/tracks', authenticateToken, async (req, res) => {
     try {
         const { q, genre } = req.query;
